@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Lista de Presentes – Acesso Fácil</title>
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase App + Auth + Database (Módulos) -->
+    <script type="module" src="./firebase.js"></script>
+    <script type="module" src="./auth.js"></script>
+    <script type="module" src="./app.js"></script>
+
+    <style>
+        body {
+            background: #fafafa;
+        }
+
+        .gift-card {
+            transition: 0.2s ease-in-out;
+        }
+        .gift-card:hover {
+            transform: scale(1.02);
+        }
+
+        /* Modal base */
+        .modal-bg {
+            background: rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+
+<body class="text-gray-800">
+
+    <!-- ============================= -->
+    <!-- TELA PRINCIPAL DO USUÁRIO     -->
+    <!-- ============================= -->
+    <section id="screen-home" class="min-h-screen p-6">
+        
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">🎁 Lista de Presentes</h1>
+
+            <button 
+                onclick="openAdminLogin()" 
+                class="text-sm text-gray-600 underline">
+                Área Admin
+            </button>
+        </header>
+
+        <p class="text-lg text-gray-600 mb-6">
+            Escolha um presente para contribuir. É rápido e fácil!
+        </p>
+
+        <!-- Grid dos presentes -->
+        <div id="gifts-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <p class="text-center text-gray-500 col-span-full">Carregando presentes...</p>
+        </div>
+    </section>
+
+
+    <!-- ============================= -->
+    <!-- LOGIN ADMIN                   -->
+    <!-- ============================= -->
+    <section id="screen-admin-login" class="hidden min-h-screen flex items-center justify-center p-6">
+        
+        <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-center">🔐 Acesso Administrativo</h2>
+
+            <form id="admin-login-form" onsubmit="adminLogin(event)">
+                <input 
+                    id="admin-email" 
+                    type="email" 
+                    placeholder="Email do Admin"
+                    class="w-full mb-3 px-4 py-2 border rounded-lg"
+                    required>
+
+                <input 
+                    id="admin-password" 
+                    type="password" 
+                    placeholder="Senha"
+                    class="w-full mb-4 px-4 py-2 border rounded-lg"
+                    required>
+
+                <button 
+                    type="submit" 
+                    class="w-full bg-purple-600 text-white py-2 rounded-lg font-semibold">
+                    Entrar
+                </button>
+
+                <button 
+                    type="button"
+                    onclick="closeAdminLogin()" 
+                    class="w-full text-gray-600 underline text-sm mt-3">
+                    Voltar
+                </button>
+            </form>
+        </div>
+    </section>
+
+
+    <!-- ============================= -->
+    <!-- DASHBOARD ADMIN               -->
+    <!-- ============================= -->
+    <section id="screen-admin" class="hidden min-h-screen p-6">
+
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Painel Administrativo</h1>
+
+            <button onclick="adminLogout()" class="underline text-sm">Sair</button>
+        </header>
+
+        <button 
+            onclick="openNewGiftModal()"
+            class="bg-green-600 text-white py-2 px-4 rounded-lg mb-6">
+            + Novo Presente
+        </button>
+
+        <div id="admin-gifts-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <p class="col-span-full text-gray-500">Carregando itens...</p>
+        </div>
+    </section>
+
+
+    <!-- ============================= -->
+    <!-- MODAL DE EDIÇÃO / NOVO ITEM -->
+    <!-- ============================= -->
+    <div id="gift-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-md relative">
+
+            <button 
+                onclick="closeGiftModal()" 
+                class="absolute right-4 top-4 text-gray-500 text-xl">&times;</button>
+
+            <h2 id="gift-modal-title" class="text-xl font-bold mb-4">Adicionar Item</h2>
+
+            <form id="gift-form" onsubmit="saveGift(event)">
+                
+                <input id="gift-id" type="hidden">
+
+                <label class="text-sm font-semibold">Nome:</label>
+                <input id="gift-name" type="text" class="w-full mb-3 border rounded-lg px-3 py-2" required>
+
+                <label class="text-sm font-semibold">Preço:</label>
+                <input id="gift-price" type="text" class="w-full mb-3 border rounded-lg px-3 py-2" required>
+
+                <label class="text-sm font-semibold">Ícone (URL):</label>
+                <input id="gift-icon" type="text" class="w-full mb-3 border rounded-lg px-3 py-2" required>
+
+                <label class="text-sm font-semibold">Imagem de Fundo (opcional):</label>
+                <input id="gift-image" type="text" class="w-full mb-3 border rounded-lg px-3 py-2">
+
+                <label class="text-sm font-semibold">Chave PIX:</label>
+                <textarea id="gift-pix" class="w-full mb-4 border rounded-lg px-3 py-2" required></textarea>
+
+                <div class="flex gap-3">
+                    <button class="w-full bg-purple-600 text-white py-2 rounded-lg">Salvar</button>
+
+                    <button 
+                        id="gift-delete"
+                        type="button" 
+                        onclick="deleteGift()" 
+                        class="hidden w-full bg-red-600 text-white py-2 rounded-lg">
+                        Excluir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
