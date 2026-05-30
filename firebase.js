@@ -1,7 +1,8 @@
-// firebase.js
+// firebase.js - Configuração segura
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, update, push, remove } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
+// 🔒 Suas chaves do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyC7QQJ_c5wmd3GffLYDrQ3xG44LdXSApFg",
     authDomain: "lista-de-presentes-33c7f.firebaseapp.com",
