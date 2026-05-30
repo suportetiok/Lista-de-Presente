@@ -1,4 +1,4 @@
-// app.js - Toda a lógica e funções
+// app.js
 import { db, ref, onValue, set, update, push, remove } from './firebase.js';
 
 // Variáveis Globais
@@ -82,18 +82,18 @@ function atualizarSaudacao(){
 }
 
 
-// ---------------- FUNÇÕES DE TROCAR TELA (CORRIGIDAS) ----------------
+// ---------------- FUNÇÕES DE TROCAR TELA (AGORA FUNCIONAM) ----------------
 function showAdminLogin() {
     screenLogin.classList.add('hidden');
     screenAdminLogin.classList.remove('hidden');
 }
-window.showAdminLogin = showAdminLogin; // ✅ Essa linha faz funcionar o botão
+window.showAdminLogin = showAdminLogin;
 
 function hideAdminLogin() {
     screenAdminLogin.classList.add('hidden');
     screenLogin.classList.remove('hidden');
 }
-window.hideAdminLogin = hideAdminLogin; // ✅ Essa linha faz funcionar o botão
+window.hideAdminLogin = hideAdminLogin;
 
 
 function handleAdminLogin(event) {
@@ -113,7 +113,7 @@ function handleAdminLogin(event) {
     }
     document.getElementById('admin-password').value = "";
 }
-window.handleAdminLogin = handleAdminLogin; // ✅ Liga o formulário
+window.handleAdminLogin = handleAdminLogin;
 
 
 function handleLogin(event) {
@@ -130,7 +130,7 @@ function handleLogin(event) {
         btnSettings.classList.add('hidden');
     }
 }
-window.handleLogin = handleLogin; // ✅ Liga o formulário
+window.handleLogin = handleLogin;
 
 
 function handleLogout() {
@@ -140,7 +140,7 @@ function handleLogout() {
     isAdmin = false;
     usuarioAtualNome = "";
 }
-window.handleLogout = handleLogout; // ✅ Liga o botão
+window.handleLogout = handleLogout;
 
 
 function renderGifts() {
