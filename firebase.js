@@ -1,13 +1,9 @@
 // firebase.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { 
     getDatabase, ref, onValue, push, update, remove 
-} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
-import {
-    getAuth, signInWithEmailAndPassword, signOut
-} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// 🔥 CONFIG SUA (mantém a original que você usava)
 const firebaseConfig = {
     apiKey: "AIzaSyC7QQJ_c5wmd3GffLYDrQ3xG44LdXSApFg",
     authDomain: "lista-de-presentes-33c7f.firebaseapp.com",
@@ -20,6 +16,5 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
-export const auth = getAuth(app);
 
-export { ref, onValue, push, update, remove, signInWithEmailAndPassword, signOut };
+export { ref, onValue, push, update, remove };
