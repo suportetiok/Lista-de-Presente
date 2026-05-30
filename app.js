@@ -1,4 +1,4 @@
-// app.js - Toda a lógica do sistema
+// app.js - Toda a lógica e funções
 import { db, ref, onValue, set, update, push, remove } from './firebase.js';
 
 // Variáveis Globais
@@ -8,7 +8,7 @@ let giftsData = [];
 let siteConfig = {};
 let usuarioAtualNome = "";
 
-// Elementos das telas
+// Elementos
 const screenLogin = document.getElementById('screen-login');
 const screenAdminLogin = document.getElementById('screen-admin-login');
 const screenDashboard = document.getElementById('screen-dashboard');
@@ -33,7 +33,6 @@ const modalQrCode = document.getElementById('modal-qr-code');
 const pixCopiaCola = document.getElementById('pix-copia-cola');
 
 
-// ---------------- AGUARDA O FIREBASE CARREGAR E CONECTA ----------------
 document.addEventListener("DOMContentLoaded", () => {
     const giftsRef = ref(db, 'gifts');
     const configRef = ref(db, 'configuracoes');
@@ -50,13 +49,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if(siteConfig.backgroundImage && siteConfig.backgroundImage !== "") {
                 paginaPrincipal.style.backgroundImage = `url("${siteConfig.backgroundImage}")`;
-            } else {
-                paginaPrincipal.style.backgroundImage = "";
             }
 
-            if(usuarioAtualNome !== ""){
-                atualizarSaudacao();
-            }
+            if(usuarioAtualNome !== "") atualizarSaudacao();
 
         } else {
             set(configRef, {
@@ -81,23 +76,25 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// ✅ FUNÇÃO NOVA: ATUALIZA O TEXTO DA SAUDAÇÃO EM QUALQUER LUGAR
 function atualizarSaudacao(){
     const textoBase = siteConfig.welcomeText || "Olá, [NOME]! Escolha um item para presentear via PIX.";
     welcomeText.innerHTML = textoBase.replace("[NOME]", `<span class="font-semibold text-pink-600">${usuarioAtualNome}</span>`);
 }
 
 
-// ---------------- GERENCIAMENTO DE ACESSO ----------------
+// ---------------- FUNÇÕES DE TROCAR TELA (CORRIGIDAS) ----------------
 function showAdminLogin() {
     screenLogin.classList.add('hidden');
     screenAdminLogin.classList.remove('hidden');
 }
+window.showAdminLogin = showAdminLogin; // ✅ Essa linha faz funcionar o botão
 
 function hideAdminLogin() {
     screenAdminLogin.classList.add('hidden');
     screenLogin.classList.remove('hidden');
 }
+window.hideAdminLogin = hideAdminLogin; // ✅ Essa linha faz funcionar o botão
+
 
 function handleAdminLogin(event) {
     event.preventDefault();
@@ -107,10 +104,8 @@ function handleAdminLogin(event) {
         usuarioAtualNome = "Administrador";
         screenAdminLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
-        
         btnNewItem.classList.remove('hidden');
         btnSettings.classList.remove('hidden');
-        
         atualizarSaudacao();
         renderGifts();
     } else {
@@ -118,6 +113,8 @@ function handleAdminLogin(event) {
     }
     document.getElementById('admin-password').value = "";
 }
+window.handleAdminLogin = handleAdminLogin; // ✅ Liga o formulário
+
 
 function handleLogin(event) {
     event.preventDefault();
@@ -133,6 +130,8 @@ function handleLogin(event) {
         btnSettings.classList.add('hidden');
     }
 }
+window.handleLogin = handleLogin; // ✅ Liga o formulário
+
 
 function handleLogout() {
     document.getElementById('username').value = '';
@@ -141,12 +140,11 @@ function handleLogout() {
     isAdmin = false;
     usuarioAtualNome = "";
 }
+window.handleLogout = handleLogout; // ✅ Liga o botão
 
 
-// ---------------- RENDERIZAR ITENS ----------------
 function renderGifts() {
     giftsGrid.innerHTML = '';
-    
     if(giftsData.length === 0) {
         giftsGrid.innerHTML = '<p class="text-center text-gray-500 col-span-full bg-white/80 p-4 rounded-xl">Nenhum presente cadastrado ainda.</p>';
         return;
@@ -156,16 +154,10 @@ function renderGifts() {
         const card = document.createElement('div');
         card.className = "card-item bg-white rounded-xl shadow-md p-6 border border-gray-100 flex flex-col justify-between hover:shadow-lg transition duration-200 relative";
         
-        if(gift.imagem && gift.imagem !== "") {
-            card.style.backgroundImage = `url("${gift.imagem}")`;
-        } else {
-            card.style.backgroundImage = "";
-        }
+        if(gift.imagem && gift.imagem !== "") card.style.backgroundImage = `url("${gift.imagem}")`;
 
         const adminEditButton = isAdmin ? `
-            <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">
-                ✏️
-            </button>
+            <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
         ` : '';
 
         card.innerHTML = `
@@ -178,9 +170,7 @@ function renderGifts() {
                 <h2 class="text-lg font-bold text-gray-800 mb-1">${gift.name}</h2>
                 <p class="text-gray-600 text-sm mb-4">Valor estimado</p>
                 <p class="text-xl font-extrabold text-pink-600 mb-4">${gift.price}</p>
-                <button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-800/90 hover:bg-gray-900 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">
-                    Presentear via PIX
-                </button>
+                <button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-800/90 hover:bg-gray-900 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">Presentear via PIX</button>
             </div>
         `;
         giftsGrid.appendChild(card);
@@ -188,7 +178,6 @@ function renderGifts() {
 }
 
 
-// ---------------- MODAL PIX ----------------
 function openPixModal(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
     if (gift) {
@@ -199,9 +188,9 @@ function openPixModal(giftId) {
         pixModal.classList.remove('hidden');
     }
 }
+window.openPixModal = openPixModal;
 
 
-// ---------------- MODAL EDIÇÃO DE ITENS ----------------
 function openNewItemModal() {
     document.getElementById('edit-modal-title').textContent = "Adicionar Novo Presente";
     editId.value = "";
@@ -213,6 +202,8 @@ function openNewItemModal() {
     btnDelete.classList.add('hidden');
     editModal.classList.remove('hidden');
 }
+window.openNewItemModal = openNewItemModal;
+
 
 function openEditModal(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
@@ -228,6 +219,8 @@ function openEditModal(giftId) {
         editModal.classList.remove('hidden');
     }
 }
+window.openEditModal = openEditModal;
+
 
 function saveItem(event) {
     event.preventDefault();
@@ -240,26 +233,24 @@ function saveItem(event) {
     };
 
     if(editId.value) {
-        const itemRef = ref(db, `gifts/${editId.value}`);
-        update(itemRef, item);
+        update(ref(db, `gifts/${editId.value}`), item);
     } else {
-        const giftsRef = ref(db, 'gifts');
-        push(giftsRef, item);
+        push(ref(db, 'gifts'), item);
     }
-
     closeModal('edit-modal');
 }
+window.saveItem = saveItem;
+
 
 function deleteItem() {
-    if(confirm("Tem certeza que deseja excluir este item? Essa ação não pode ser desfeita!")) {
-        const itemRef = ref(db, `gifts/${editId.value}`);
-        remove(itemRef);
+    if(confirm("Tem certeza que deseja excluir?")) {
+        remove(ref(db, `gifts/${editId.value}`));
         closeModal('edit-modal');
     }
 }
+window.deleteItem = deleteItem;
 
 
-// ---------------- MODAL CONFIGURAÇÕES ----------------
 function openSettingsModal() {
     document.getElementById('cfg-login-title').value = siteConfig.loginTitle || "";
     document.getElementById('cfg-login-subtitle').value = siteConfig.loginSubtitle || "";
@@ -270,6 +261,8 @@ function openSettingsModal() {
     document.getElementById('cfg-admin-pass').value = "";
     document.getElementById('settings-modal').classList.remove('hidden');
 }
+window.openSettingsModal = openSettingsModal;
+
 
 function saveSettings(event) {
     event.preventDefault();
@@ -291,34 +284,16 @@ function saveSettings(event) {
     closeModal('settings-modal');
     alert('Configurações salvas com sucesso!');
 }
+window.saveSettings = saveSettings;
 
 
-// ---------------- FUNÇÕES GERAIS ----------------
 function closeModal(modalId) {
     document.getElementById(modalId).classList.add('hidden');
 }
+window.closeModal = closeModal;
+
 
 function copyPixKey() {
-    const textToCopy = pixCopiaCola.textContent;
-    navigator.clipboard.writeText(textToCopy).then(() => {
-        alert("Código PIX Copia e Cola copiado com sucesso!");
-    }).catch(err => {
-        alert("Erro ao copiar. Seu navegador pode não suportar essa função.");
-    });
+    navigator.clipboard.writeText(pixCopiaCola.textContent).then(() => alert("Copiado!"));
 }
-
-// Disponibiliza funções para o HTML
-window.showAdminLogin = showAdminLogin;
-window.hideAdminLogin = hideAdminLogin;
-window.handleAdminLogin = handleAdminLogin;
-window.handleLogin = handleLogin;
-window.handleLogout = handleLogout;
-window.openPixModal = openPixModal;
-window.openNewItemModal = openNewItemModal;
-window.openEditModal = openEditModal;
-window.saveItem = saveItem;
-window.deleteItem = deleteItem;
-window.openSettingsModal = openSettingsModal;
-window.saveSettings = saveSettings;
-window.closeModal = closeModal;
 window.copyPixKey = copyPixKey;
