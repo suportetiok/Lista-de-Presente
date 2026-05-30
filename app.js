@@ -1,10 +1,14 @@
-import { db, ref, onValue, update } from "./firebase.js";
+import { db, ref, onValue, get, update } from "./firebase.js";
 
 let currentUser = "";
 let currentGift = null;
 const adminPassword = "admin123";
 
-// ======== TELA INICIAL ========
+function showScreen(id) {
+    document.querySelectorAll("section").forEach(sec => sec.classList.add("hidden"));
+    document.getElementById(id).classList.remove("hidden");
+}
+
 window.enterList = () => {
     const name = document.getElementById("user-name").value.trim();
     if (name.length < 3) return alert("Digite seu nome completo.");
@@ -24,18 +28,11 @@ window.adminLogin = () => {
     const pass = document.getElementById("admin-password").value;
     if (pass !== adminPassword) return alert("Senha incorreta!");
 
+    document.getElementById("user-display").innerText = "Administrador";
     showScreen("screen-list");
+    loadGifts();
 };
 
-
-// ======== TROCA DE TELAS ========
-function showScreen(id) {
-    document.querySelectorAll("section").forEach(sec => sec.classList.add("hidden"));
-    document.getElementById(id).classList.remove("hidden");
-}
-
-
-// ======== CARREGAR PRESENTES ========
 function loadGifts() {
     const giftsGrid = document.getElementById("gifts-grid");
 
@@ -58,15 +55,11 @@ function loadGifts() {
     });
 }
 
-
-// ======== PIX ========
 window.openPix = async (id) => {
     currentGift = id;
 
-    const snap = (await import("https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"))
-        .get(ref(db, "gifts/" + id));
-
-    const item = (await snap).val();
+    const snap = await get(ref(db, "gifts/" + id));
+    const item = snap.val();
 
     const key = item.pixKey;
     document.getElementById("pix-key").innerText = key;
