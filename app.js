@@ -1,4 +1,4 @@
-// app.js
+// app.js - Toda a lógica CORRIGIDA e COMPLETA
 import { db, ref, onValue, set, update, push, remove } from './firebase.js';
 
 // Variáveis Globais
@@ -8,7 +8,7 @@ let giftsData = [];
 let siteConfig = {};
 let usuarioAtualNome = "";
 
-// Elementos
+// Elementos da página
 const screenLogin = document.getElementById('screen-login');
 const screenAdminLogin = document.getElementById('screen-admin-login');
 const screenDashboard = document.getElementById('screen-dashboard');
@@ -18,6 +18,8 @@ const footerText = document.getElementById('footer-text');
 const paginaPrincipal = document.getElementById('pagina-principal');
 const btnNewItem = document.getElementById('btn-new-item');
 const btnSettings = document.getElementById('btn-settings');
+
+// Elementos Modais
 const editModal = document.getElementById('edit-modal');
 const editId = document.getElementById('edit-id');
 const editName = document.getElementById('edit-name');
@@ -26,46 +28,74 @@ const editIcon = document.getElementById('edit-icon');
 const editImagem = document.getElementById('edit-imagem');
 const editPixKey = document.getElementById('edit-pixkey');
 const btnDelete = document.getElementById('btn-delete');
+
 const pixModal = document.getElementById('pix-modal');
 const modalGiftName = document.getElementById('modal-gift-name');
 const modalGiftValue = document.getElementById('modal-gift-value');
 const modalQrCode = document.getElementById('modal-qr-code');
 const pixCopiaCola = document.getElementById('pix-copia-cola');
 
+const settingsModal = document.getElementById('settings-modal'); // ✅ Adicionado
+const cfgLoginTitle = document.getElementById('cfg-login-title');
+const cfgLoginSubtitle = document.getElementById('cfg-login-subtitle');
+const cfgMainTitle = document.getElementById('cfg-main-title');
+const cfgWelcomeText = document.getElementById('cfg-welcome-text');
+const cfgBgImage = document.getElementById('cfg-bg-image');
+const cfgFooterText = document.getElementById('cfg-footer-text');
+const cfgAdminPass = document.getElementById('cfg-admin-pass');
+
+
+// ✅ FUNÇÃO GLOBAL PARA FECHAR MODAIS (RESOLVE O ERRO 2)
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) modal.classList.add('hidden');
+};
+
+// ✅ FUNÇÃO COPIAR PIX (RESOLVE O ERRO 3)
+window.copyPixKey = function() {
+    if (!pixCopiaCola) return;
+    navigator.clipboard.writeText(pixCopiaCola.textContent)
+        .then(() => alert("✅ Código PIX copiado com sucesso!"))
+        .catch(() => alert("❌ Erro ao copiar. Selecione o texto e copie manualmente."));
+};
+
 
 document.addEventListener("DOMContentLoaded", () => {
     const giftsRef = ref(db, 'gifts');
     const configRef = ref(db, 'configuracoes');
 
+    // Carrega configurações do sistema
     onValue(configRef, (snapshot) => {
         if (snapshot.exists()) {
             siteConfig = snapshot.val();
             ADMIN_PASSWORD = siteConfig.adminPassword || "admin123";
             
-            document.getElementById('login-title').textContent = siteConfig.loginTitle || "Lista de Presentes";
-            document.getElementById('login-subtitle').textContent = siteConfig.loginSubtitle || "Identifique-se para acessar a lista";
-            document.getElementById('main-title').textContent = siteConfig.mainTitle || "Presentes";
-            footerText.textContent = siteConfig.footerText || "© 2026 Lista de Presentes";
+            if(document.getElementById('login-title')) document.getElementById('login-title').textContent = siteConfig.loginTitle || "Lista de Presentes";
+            if(document.getElementById('login-subtitle')) document.getElementById('login-subtitle').textContent = siteConfig.loginSubtitle || "Identifique-se para acessar";
+            if(document.getElementById('main-title')) document.getElementById('main-title').textContent = siteConfig.mainTitle || "Presentes";
+            if(footerText) footerText.textContent = siteConfig.footerText || "© 2026 Lista de Presentes";
 
-            if(siteConfig.backgroundImage && siteConfig.backgroundImage !== "") {
+            if(siteConfig.backgroundImage && siteConfig.backgroundImage !== "" && paginaPrincipal) {
                 paginaPrincipal.style.backgroundImage = `url("${siteConfig.backgroundImage}")`;
             }
 
             if(usuarioAtualNome !== "") atualizarSaudacao();
 
         } else {
+            // Cria configurações padrão se não existir
             set(configRef, {
                 loginTitle: "Lista de Presentes",
                 loginSubtitle: "Identifique-se para acessar a lista",
                 mainTitle: "Presentes",
                 welcomeText: "Olá, [NOME]! Escolha um item para presentear via PIX.",
-                footerText: "Lista de Presentes Fictícia &copy; 2026",
+                footerText: "Lista de Presentes &copy; 2026",
                 backgroundImage: "",
                 adminPassword: "admin123"
             });
         }
     });
 
+    // Carrega lista de presentes
     onValue(giftsRef, (snapshot) => {
         giftsData = [];
         snapshot.forEach((childSnapshot) => {
@@ -77,46 +107,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 function atualizarSaudacao(){
+    if(!welcomeText) return;
     const textoBase = siteConfig.welcomeText || "Olá, [NOME]! Escolha um item para presentear via PIX.";
     welcomeText.innerHTML = textoBase.replace("[NOME]", `<span class="font-semibold text-pink-600">${usuarioAtualNome}</span>`);
 }
 
 
-// ---------------- FUNÇÕES DE TROCAR TELA (AGORA FUNCIONAM) ----------------
-function showAdminLogin() {
-    screenLogin.classList.add('hidden');
-    screenAdminLogin.classList.remove('hidden');
-}
-window.showAdminLogin = showAdminLogin;
+// ---------------- FUNÇÕES DE NAVEGAÇÃO ----------------
+window.showAdminLogin = function() {
+    if(screenLogin) screenLogin.classList.add('hidden');
+    if(screenAdminLogin) screenAdminLogin.classList.remove('hidden');
+};
 
-function hideAdminLogin() {
-    screenAdminLogin.classList.add('hidden');
-    screenLogin.classList.remove('hidden');
-}
-window.hideAdminLogin = hideAdminLogin;
+window.hideAdminLogin = function() {
+    if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
+    if(screenLogin) screenLogin.classList.remove('hidden');
+};
 
 
-function handleAdminLogin(event) {
+window.handleAdminLogin = function(event) {
     event.preventDefault();
     const pass = document.getElementById('admin-password').value;
     if(pass === ADMIN_PASSWORD) {
         isAdmin = true;
         usuarioAtualNome = "Administrador";
-        screenAdminLogin.classList.add('hidden');
-        screenDashboard.classList.remove('hidden');
-        btnNewItem.classList.remove('hidden');
-        btnSettings.classList.remove('hidden');
+        if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
+        if(screenDashboard) screenDashboard.classList.remove('hidden');
+        if(btnNewItem) btnNewItem.classList.remove('hidden');
+        if(btnSettings) btnSettings.classList.remove('hidden');
         atualizarSaudacao();
         renderGifts();
     } else {
-        alert("Senha incorreta!");
+        alert("❌ Senha incorreta!");
     }
     document.getElementById('admin-password').value = "";
-}
-window.handleAdminLogin = handleAdminLogin;
+};
 
 
-function handleLogin(event) {
+window.handleLogin = function(event) {
     event.preventDefault();
     const username = document.getElementById('username').value.trim();
     isAdmin = false;
@@ -124,27 +152,28 @@ function handleLogin(event) {
     if (username) {
         usuarioAtualNome = username;
         atualizarSaudacao();
-        screenLogin.classList.add('hidden');
-        screenDashboard.classList.remove('hidden');
-        btnNewItem.classList.add('hidden');
-        btnSettings.classList.add('hidden');
+        if(screenLogin) screenLogin.classList.add('hidden');
+        if(screenDashboard) screenDashboard.classList.remove('hidden');
+        if(btnNewItem) btnNewItem.classList.add('hidden');
+        if(btnSettings) btnSettings.classList.add('hidden');
     }
-}
-window.handleLogin = handleLogin;
+};
 
 
-function handleLogout() {
-    document.getElementById('username').value = '';
-    screenDashboard.classList.add('hidden');
-    screenLogin.classList.remove('hidden');
+window.handleLogout = function() {
+    if(screenDashboard) screenDashboard.classList.add('hidden');
+    if(screenLogin) screenLogin.classList.remove('hidden');
     isAdmin = false;
     usuarioAtualNome = "";
-}
-window.handleLogout = handleLogout;
+    document.getElementById('username').value = '';
+};
 
 
+// ---------------- RENDERIZAR ITENS (COM TRATAMENTO DE ERRO DE IMAGEM) ----------------
 function renderGifts() {
+    if(!giftsGrid) return;
     giftsGrid.innerHTML = '';
+    
     if(giftsData.length === 0) {
         giftsGrid.innerHTML = '<p class="text-center text-gray-500 col-span-full bg-white/80 p-4 rounded-xl">Nenhum presente cadastrado ainda.</p>';
         return;
@@ -154,7 +183,13 @@ function renderGifts() {
         const card = document.createElement('div');
         card.className = "card-item bg-white rounded-xl shadow-md p-6 border border-gray-100 flex flex-col justify-between hover:shadow-lg transition duration-200 relative";
         
-        if(gift.imagem && gift.imagem !== "") card.style.backgroundImage = `url("${gift.imagem}")`;
+        // ✅ TRATAMENTO DE ERRO DE IMAGEM (RESOLVE O ERRO 5)
+        if(gift.imagem && gift.imagem !== "") {
+            const imgTest = new Image();
+            imgTest.onload = () => card.style.backgroundImage = `url("${gift.imagem}")`;
+            imgTest.onerror = () => card.style.backgroundImage = ""; // Fundo limpo se imagem quebrar
+            imgTest.src = gift.imagem;
+        }
 
         const adminEditButton = isAdmin ? `
             <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
@@ -165,7 +200,7 @@ function renderGifts() {
             ${adminEditButton} 
             <div class="card-content">
                 <div class="text-4xl mb-4 bg-pink-50/80 inline-block p-3 rounded-xl flex items-center justify-center">
-                    <img src="${gift.icon}" alt="Ícone" class="icon-img">
+                    <img src="${gift.icon}" alt="Ícone" class="icon-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3099/3099358.png'">
                 </div>
                 <h2 class="text-lg font-bold text-gray-800 mb-1">${gift.name}</h2>
                 <p class="text-gray-600 text-sm mb-4">Valor estimado</p>
@@ -178,20 +213,22 @@ function renderGifts() {
 }
 
 
-function openPixModal(giftId) {
+// ---------------- MODAL PIX ----------------
+window.openPixModal = function(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
-    if (gift) {
-        modalGiftName.textContent = gift.name;
-        modalGiftValue.textContent = gift.price;
-        pixCopiaCola.textContent = gift.pixKey;
-        modalQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(gift.pixKey)}`;
+    if (gift && pixModal) {
+        if(modalGiftName) modalGiftName.textContent = gift.name;
+        if(modalGiftValue) modalGiftValue.textContent = gift.price;
+        if(pixCopiaCola) pixCopiaCola.textContent = gift.pixKey;
+        if(modalQrCode) modalQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(gift.pixKey)}`;
         pixModal.classList.remove('hidden');
     }
-}
-window.openPixModal = openPixModal;
+};
 
 
-function openNewItemModal() {
+// ---------------- MODAL EDITAR/ADICIONAR ITEM ----------------
+window.openNewItemModal = function() {
+    if(!editModal) return;
     document.getElementById('edit-modal-title').textContent = "Adicionar Novo Presente";
     editId.value = "";
     editName.value = "";
@@ -199,15 +236,14 @@ function openNewItemModal() {
     editIcon.value = "";
     editImagem.value = "";
     editPixKey.value = "";
-    btnDelete.classList.add('hidden');
+    if(btnDelete) btnDelete.classList.add('hidden');
     editModal.classList.remove('hidden');
-}
-window.openNewItemModal = openNewItemModal;
+};
 
 
-function openEditModal(giftId) {
+window.openEditModal = function(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
-    if(gift) {
+    if(gift && editModal) {
         document.getElementById('edit-modal-title').textContent = "Editar Presente";
         editId.value = gift.id;
         editName.value = gift.name;
@@ -215,14 +251,13 @@ function openEditModal(giftId) {
         editIcon.value = gift.icon;
         editImagem.value = gift.imagem || "";
         editPixKey.value = gift.pixKey;
-        btnDelete.classList.remove('hidden');
+        if(btnDelete) btnDelete.classList.remove('hidden');
         editModal.classList.remove('hidden');
     }
-}
-window.openEditModal = openEditModal;
+};
 
 
-function saveItem(event) {
+window.saveItem = function(event) {
     event.preventDefault();
     const item = {
         name: editName.value,
@@ -238,62 +273,49 @@ function saveItem(event) {
         push(ref(db, 'gifts'), item);
     }
     closeModal('edit-modal');
-}
-window.saveItem = saveItem;
+};
 
 
-function deleteItem() {
-    if(confirm("Tem certeza que deseja excluir?")) {
+window.deleteItem = function() {
+    if(confirm("Tem certeza que deseja excluir este item? Essa ação não pode ser desfeita!")) {
         remove(ref(db, `gifts/${editId.value}`));
         closeModal('edit-modal');
     }
-}
-window.deleteItem = deleteItem;
+};
 
 
-function openSettingsModal() {
-    document.getElementById('cfg-login-title').value = siteConfig.loginTitle || "";
-    document.getElementById('cfg-login-subtitle').value = siteConfig.loginSubtitle || "";
-    document.getElementById('cfg-main-title').value = siteConfig.mainTitle || "";
-    document.getElementById('cfg-welcome-text').value = siteConfig.welcomeText || "";
-    document.getElementById('cfg-bg-image').value = siteConfig.backgroundImage || "";
-    document.getElementById('cfg-footer-text').value = siteConfig.footerText || "";
-    document.getElementById('cfg-admin-pass').value = "";
-    document.getElementById('settings-modal').classList.remove('hidden');
-}
-window.openSettingsModal = openSettingsModal;
+// ---------------- MODAL CONFIGURAÇÕES (RESOLVE ERRO 1 E 4) ----------------
+window.openSettingsModal = function() {
+    if(!settingsModal) return;
+    // Preenche dados atuais
+    cfgLoginTitle.value = siteConfig.loginTitle || "";
+    cfgLoginSubtitle.value = siteConfig.loginSubtitle || "";
+    cfgMainTitle.value = siteConfig.mainTitle || "";
+    cfgWelcomeText.value = siteConfig.welcomeText || "";
+    cfgBgImage.value = siteConfig.backgroundImage || "";
+    cfgFooterText.value = siteConfig.footerText || "";
+    cfgAdminPass.value = ""; // Limpa para não mostrar a senha
+    settingsModal.classList.remove('hidden');
+};
 
 
-function saveSettings(event) {
+window.saveSettings = function(event) {
     event.preventDefault();
-    const novaSenha = document.getElementById('cfg-admin-pass').value;
+    const novaSenha = cfgAdminPass.value.trim();
     const configRef = ref(db, 'configuracoes');
     
-    const dados = {
-        loginTitle: document.getElementById('cfg-login-title').value,
-        loginSubtitle: document.getElementById('cfg-login-subtitle').value,
-        mainTitle: document.getElementById('cfg-main-title').value,
-        welcomeText: document.getElementById('cfg-welcome-text').value,
-        backgroundImage: document.getElementById('cfg-bg-image').value,
-        footerText: document.getElementById('cfg-footer-text').value,
-        adminPassword: novaSenha ? novaSenha : ADMIN_PASSWORD
+    const dadosAtualizados = {
+        loginTitle: cfgLoginTitle.value,
+        loginSubtitle: cfgLoginSubtitle.value,
+        mainTitle: cfgMainTitle.value,
+        welcomeText: cfgWelcomeText.value,
+        backgroundImage: cfgBgImage.value,
+        footerText: cfgFooterText.value,
+        adminPassword: novaSenha ? novaSenha : ADMIN_PASSWORD // Mantém atual se não alterar
     };
 
-    update(configRef, dados);
-    ADMIN_PASSWORD = dados.adminPassword;
+    update(configRef, dadosAtualizados);
+    ADMIN_PASSWORD = dadosAtualizados.adminPassword;
     closeModal('settings-modal');
-    alert('Configurações salvas com sucesso!');
-}
-window.saveSettings = saveSettings;
-
-
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-}
-window.closeModal = closeModal;
-
-
-function copyPixKey() {
-    navigator.clipboard.writeText(pixCopiaCola.textContent).then(() => alert("Copiado!"));
-}
-window.copyPixKey = copyPixKey;
+    alert("✅ Configurações salvas com sucesso!");
+};
