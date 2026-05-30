@@ -1,117 +1,248 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🎁 Chá de Panelas Virtual</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Presentes Virtual</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="qrcode.min.js"></script>
+    
+    <style>
+        body {
+            background-size: cover !important;
+            background-position: center center !important;
+            background-attachment: fixed !important;
+            background-repeat: no-repeat !important;
+            transition: background-image 0.3s ease;
+        }
+        .card-item {
+            background-size: cover !important;
+            background-position: center center !important;
+            background-repeat: no-repeat !important;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-overlay {
+            background-color: rgba(255, 255, 255, 0.85);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        .card-content {
+            position: relative;
+            z-index: 2;
+        }
+        .icon-img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+    </style>
+
+    <!-- ✅ Importa os arquivos separados -->
+    <script type="module" src="./firebase.js"></script>
+    <script type="module" src="./app.js"></script>
 </head>
+<body id="pagina-principal" class="bg-gray-50 font-sans min-h-screen flex flex-col justify-between">
 
-<body class="bg-gray-100 text-gray-800">
-
-<!-- ====================== -->
-<!-- TELA INICIAL           -->
-<!-- ====================== -->
-<section id="screen-start" class="min-h-screen flex flex-col items-center justify-center p-6">
-    
-    <h1 class="text-4xl font-bold mb-3">🎁 Chá de Panelas Virtual</h1>
-    <p class="text-lg text-gray-600 mb-6">Identifique-se para acessar a lista</p>
-
-    <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow">
-
-        <label class="font-semibold text-sm">Seu Nome</label>
-        <input id="user-name" type="text" 
-               placeholder="Digite seu nome completo"
-               class="w-full border rounded-lg px-4 py-2 mt-1 mb-4" />
-
-        <button onclick="enterList()" 
-                class="w-full bg-purple-600 text-white py-2 rounded-lg font-semibold">
-            Entrar na Lista
-        </button>
-
-        <button onclick="openAdminLogin()" 
-                class="w-full mt-4 text-center text-sm text-gray-600 underline">
-            Acesso Administrativo
-        </button>
+    <!-- Tela de Login do Usuário -->
+    <div id="screen-login" class="flex-grow flex items-center justify-center p-4">
+        <div class="bg-white/90 p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+            <div class="text-center mb-8">
+                <span class="text-4xl">🎁</span>
+                <h1 id="login-title" class="text-2xl font-bold text-gray-800 mt-2"></h1>
+                <p id="login-subtitle" class="text-gray-500 text-sm mt-1"></p>
+            </div>
+            <form onsubmit="handleLogin(event)">
+                <div class="mb-5">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="username">Seu Nome</label>
+                    <input class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 transition" type="text" id="username" placeholder="Digite seu nome completo" required>
+                </div>
+                <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform active:scale-95 shadow-md">
+                    Entrar na Lista
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <button onclick="showAdminLogin()" class="text-sm text-gray-500 hover:text-pink-500 underline">
+                    Acesso Administrativo
+                </button>
+            </div>
+        </div>
     </div>
-</section>
 
-
-<!-- ====================== -->
-<!-- ADMIN LOGIN            -->
-<!-- ====================== -->
-<section id="screen-admin-login" class="hidden min-h-screen flex items-center justify-center p-6">
-    
-    <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow">
-        <h2 class="text-2xl font-bold mb-4 text-center">🔐 Acesso Administrativo</h2>
-
-        <label class="text-sm font-semibold">Senha do Administrador</label>
-        <input id="admin-password" type="password" class="w-full border rounded-lg px-3 py-2 mb-4">
-
-        <button onclick="adminLogin()" 
-                class="w-full bg-purple-600 text-white py-2 rounded-lg font-semibold">
-            Entrar
-        </button>
-
-        <button onclick="backToStart()" 
-                class="w-full mt-3 text-gray-600 underline text-sm">
-            Voltar
-        </button>
+    <!-- Tela de Login do Administrador -->
+    <div id="screen-admin-login" class="hidden flex-grow flex items-center justify-center p-4">
+        <div class="bg-white/90 p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+            <div class="text-center mb-8">
+                <span class="text-4xl">🔐</span>
+                <h1 class="text-2xl font-bold text-gray-800 mt-2">Área Administrativa</h1>
+                <p class="text-gray-500 text-sm mt-1">Insira a senha para gerenciar os itens</p>
+            </div>
+            <form onsubmit="handleAdminLogin(event)">
+                <div class="mb-5">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="admin-password">Senha</label>
+                    <input class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 transition" type="password" id="admin-password" placeholder="Digite a senha de acesso" required>
+                </div>
+                <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform active:scale-95 shadow-md">
+                    Entrar como Admin
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <button onclick="hideAdminLogin()" class="text-sm text-gray-500 hover:text-pink-500 underline">
+                    Voltar
+                </button>
+            </div>
+        </div>
     </div>
-</section>
 
-
-<!-- ========================= -->
-<!-- LISTA DE PRESENTES        -->
-<!-- ========================= -->
-<section id="screen-list" class="hidden min-h-screen p-6">
-    
-    <header class="flex justify-between mb-6">
-        <h1 class="text-2xl font-bold">Lista de Presentes</h1>
-        <span id="user-display" class="text-gray-600"></span>
-    </header>
-
-    <div id="gifts-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        Carregando...
-    </div>
-</section>
-
-
-<!-- ========================= -->
-<!-- MODAL PIX COM QR CODE     -->
-<!-- ========================= -->
-<div id="pix-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-6">
-    <div class="bg-white p-6 rounded-2xl w-full max-w-md relative">
-
-        <button onclick="closePix()" 
-                class="absolute right-4 top-4 text-gray-500 text-xl">&times;</button>
-
-        <h2 class="text-xl font-bold mb-4">Pagamento via PIX</h2>
-
-        <div class="mb-4">
-            <div id="qrcode" class="mx-auto"></div>
+    <!-- Tela Principal / Lista de Presentes -->
+    <div id="screen-dashboard" class="hidden flex-grow container mx-auto px-4 py-8 max-w-5xl">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6 mb-8 bg-white/80 p-4 rounded-xl">
+            <div>
+                <h1 id="main-title" class="text-3xl font-bold text-gray-800">Presentes Fictícios</h1>
+                <p id="welcome-text" class="text-gray-600 mt-1"></p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button id="btn-settings" onclick="openSettingsModal()" class="hidden bg-purple-500 hover:bg-purple-600 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
+                    ⚙️ Configurações
+                </button>
+                <button id="btn-new-item" onclick="openNewItemModal()" class="hidden bg-green-500 hover:bg-green-600 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
+                    + Novo Item
+                </button>
+                <button onclick="handleLogout()" class="text-sm text-gray-500 hover:text-red-500 underline transition">
+                    Sair
+                </button>
+            </div>
         </div>
 
-        <p class="font-semibold mb-1">Chave PIX:</p>
-        <p id="pix-key" class="bg-gray-100 p-3 rounded-lg text-sm break-all mb-3"></p>
-
-        <button onclick="copyPixKey()" 
-                class="w-full bg-gray-800 text-white py-2 rounded-lg mb-3">
-            Copiar chave
-        </button>
-
-        <button onclick="confirmPix()" 
-                class="w-full bg-green-600 text-white py-2 rounded-lg">
-            Marcar como Pago
-        </button>
-
+        <div id="gifts-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <p class="text-center text-gray-500 col-span-full bg-white/80 p-4 rounded-xl">Carregando lista...</p>
+        </div>
     </div>
-</div>
 
-<script type="module" src="firebase.js"></script>
-<script type="module" src="app.js"></script>
+    <!-- Modal PIX -->
+    <div id="pix-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center relative border border-gray-100">
+            <button onclick="closeModal('pix-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-1" id="modal-gift-name">Nome do Presente</h3>
+            <p class="text-pink-600 font-bold text-lg mb-4" id="modal-gift-value">R$ 0,00</p>
+            
+            <div class="bg-gray-100 p-4 rounded-xl inline-block mb-4">
+                <img id="modal-qr-code" src="" alt="QR Code PIX" class="w-40 h-40 mx-auto">
+            </div>
+            
+            <p class="text-xs text-gray-500 mb-4 px-4">Aponte a câmera do seu banco para o QR Code acima para simular o pagamento.</p>
+            
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 flex items-center justify-between text-left mb-4">
+                <span class="text-xs text-gray-600 truncate mr-2" id="pix-copia-cola">chave-pix-ficticia-copia-e-cola...</span>
+                <button onclick="copyPixKey()" class="bg-pink-500 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-pink-600 transition shrink-0">Copiar</button>
+            </div>
+            
+            <button onclick="closeModal('pix-modal')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-lg transition">
+                Fechar
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Edição / Novo Item -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative border border-gray-100">
+            <button onclick="closeModal('edit-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-4" id="edit-modal-title">Adicionar Novo Presente</h3>
+            
+            <form onsubmit="saveItem(event)">
+                <input type="hidden" id="edit-id">
+                
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Nome</label>
+                    <input type="text" id="edit-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Valor (ex: R$ 100,00)</label>
+                    <input type="text" id="edit-price" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">URL da Imagem do Ícone</label>
+                    <input type="text" id="edit-icon" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="https://exemplo.com/icone.png" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">URL Imagem de Fundo do Item (opcional)</label>
+                    <input type="text" id="edit-imagem" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="https://exemplo.com/fundo.jpg">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Chave PIX</label>
+                    <textarea id="edit-pixkey" class="w-full px-3 py-2 border border-gray-300 rounded-lg" rows="3" required></textarea>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                        Salvar
+                    </button>
+                    <button id="btn-delete" type="button" onclick="deleteItem()" class="hidden w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                        Excluir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal CONFIGURAÇÕES DO SISTEMA -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative border border-gray-100">
+            <button onclick="closeModal('settings-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            
+            <h3 class="text-xl font-bold text-gray-800 mb-4">⚙️ Configurações do Sistema</h3>
+            
+            <form onsubmit="saveSettings(event)">
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Título da Tela Inicial</label>
+                    <input type="text" id="cfg-login-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Subtítulo da Tela Inicial</label>
+                    <input type="text" id="cfg-login-subtitle" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Título Principal (Topo)</label>
+                    <input type="text" id="cfg-main-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Texto de Saudação</label>
+                    <input type="text" id="cfg-welcome-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ex: Olá, [NOME]! Escolha seu presente...">
+                    <small class="text-gray-400">Use <code>[NOME]</code> onde quiser que apareça o nome do usuário</small>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">URL Imagem de Fundo do Site</label>
+                    <input type="text" id="cfg-bg-image" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="https://exemplo.com/fundo.jpg">
+                </div>
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Texto do Rodapé</label>
+                    <input type="text" id="cfg-footer-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Nova Senha de Administrador</label>
+                    <input type="password" id="cfg-admin-pass" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Deixe vazio para não alterar">
+                </div>
+
+                <button type="submit" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                    Salvar Alterações
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <footer id="rodape" class="text-center py-4 text-xs text-gray-400 border-t border-gray-100 bg-white/80 w-full">
+        <span id="footer-text">Lista de Presentes Fictícia &copy; 2026</span>
+    </footer>
 
 </body>
 </html>
