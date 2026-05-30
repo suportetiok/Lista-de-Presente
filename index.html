@@ -6,8 +6,6 @@
     <title>🎁 Chá de Panelas Virtual</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <link rel="stylesheet" href="styles.css">
     <script src="qrcode.min.js"></script>
 </head>
 
@@ -42,7 +40,7 @@
 
 
 <!-- ====================== -->
-<!-- TELA ADMIN LOGIN       -->
+<!-- ADMIN LOGIN            -->
 <!-- ====================== -->
 <section id="screen-admin-login" class="hidden min-h-screen flex items-center justify-center p-6">
     
@@ -65,9 +63,9 @@
 </section>
 
 
-<!-- ====================== -->
-<!-- LISTA DE PRESENTES     -->
-<!-- ====================== -->
+<!-- ========================= -->
+<!-- LISTA DE PRESENTES        -->
+<!-- ========================= -->
 <section id="screen-list" class="hidden min-h-screen p-6">
     
     <header class="flex justify-between mb-6">
@@ -78,13 +76,12 @@
     <div id="gifts-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         Carregando...
     </div>
-
 </section>
 
 
-<!-- ====================== -->
-<!-- MODAL PIX              -->
-<!-- ====================== -->
+<!-- ========================= -->
+<!-- MODAL PIX COM QR CODE     -->
+<!-- ========================= -->
 <div id="pix-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-6">
     <div class="bg-white p-6 rounded-2xl w-full max-w-md relative">
 
@@ -113,9 +110,8 @@
     </div>
 </div>
 
-
-<script src="firebase.js" type="module"></script>
-<script src="app.js" type="module"></script>
+<script type="module" src="firebase.js"></script>
+<script type="module" src="app.js"></script>
 
 </body>
 </html>
