@@ -1,7 +1,6 @@
-// firebase.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { 
-    getDatabase, ref, onValue, push, update, remove 
+    getDatabase, ref, onValue, get, update 
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 const firebaseConfig = {
@@ -16,5 +15,4 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
-
-export { ref, onValue, push, update, remove };
+export { ref, onValue, get, update };
