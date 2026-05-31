@@ -1,6 +1,6 @@
-// firebase.js - Configuração segura
+// firebase.js - Configuração SEGURA e FUNCIONAL
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-import { getDatabase, ref, onValue, set, update, push, remove } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+import { getDatabase, ref, onValue, set, update, push, remove, get } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
 // 🔒 Suas chaves do Firebase
 const firebaseConfig = {
@@ -16,4 +16,5 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-export { db, ref, onValue, set, update, push, remove };
+// ✅ Exporta TODAS as funções necessárias
+export { db, ref, onValue, set, update, push, remove, get };
