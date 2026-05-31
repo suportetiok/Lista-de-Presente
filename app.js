@@ -1,5 +1,5 @@
-// app.js - Toda a lógica CORRIGIDA e COMPLETA
-import { db, ref, onValue, set, update, push, remove } from './firebase.js';
+// app.js - Toda lógica CORRIGIDA: SALVA E ATUALIZA AGORA!
+import { db, ref, onValue, set, update, push, remove, get } from './firebase.js';
 
 // Variáveis Globais
 let ADMIN_PASSWORD = "admin123";
@@ -13,7 +13,7 @@ const screenLogin = document.getElementById('screen-login');
 const screenAdminLogin = document.getElementById('screen-admin-login');
 const screenDashboard = document.getElementById('screen-dashboard');
 const giftsGrid = document.getElementById('gifts-grid');
-const welcomeText = document.getElementById('welcome-text');
+const welcomeText = document.getElementById('welcomeText');
 const footerText = document.getElementById('footer-text');
 const paginaPrincipal = document.getElementById('pagina-principal');
 const btnNewItem = document.getElementById('btn-new-item');
@@ -35,7 +35,7 @@ const modalGiftValue = document.getElementById('modal-gift-value');
 const modalQrCode = document.getElementById('modal-qr-code');
 const pixCopiaCola = document.getElementById('pix-copia-cola');
 
-const settingsModal = document.getElementById('settings-modal'); // ✅ Adicionado
+const settingsModal = document.getElementById('settings-modal');
 const cfgLoginTitle = document.getElementById('cfg-login-title');
 const cfgLoginSubtitle = document.getElementById('cfg-login-subtitle');
 const cfgMainTitle = document.getElementById('cfg-main-title');
@@ -45,18 +45,17 @@ const cfgFooterText = document.getElementById('cfg-footer-text');
 const cfgAdminPass = document.getElementById('cfg-admin-pass');
 
 
-// ✅ FUNÇÃO GLOBAL PARA FECHAR MODAIS (RESOLVE O ERRO 2)
+// ✅ FUNÇÕES GLOBAIS
 window.closeModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.classList.add('hidden');
 };
 
-// ✅ FUNÇÃO COPIAR PIX (RESOLVE O ERRO 3)
 window.copyPixKey = function() {
     if (!pixCopiaCola) return;
     navigator.clipboard.writeText(pixCopiaCola.textContent)
-        .then(() => alert("✅ Código PIX copiado com sucesso!"))
-        .catch(() => alert("❌ Erro ao copiar. Selecione o texto e copie manualmente."));
+        .then(() => alert("✅ Código PIX copiado!"))
+        .catch(() => alert("❌ Erro ao copiar, copie manualmente."));
 };
 
 
@@ -64,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const giftsRef = ref(db, 'gifts');
     const configRef = ref(db, 'configuracoes');
 
-    // Carrega configurações do sistema
+    // Carrega configurações
     onValue(configRef, (snapshot) => {
         if (snapshot.exists()) {
             siteConfig = snapshot.val();
@@ -95,13 +94,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Carrega lista de presentes
+    // Carrega lista de presentes e ATUALIZA SEMPRE que mudar
     onValue(giftsRef, (snapshot) => {
         giftsData = [];
         snapshot.forEach((childSnapshot) => {
             giftsData.push({ id: childSnapshot.key, ...childSnapshot.val() });
         });
-        renderGifts();
+        renderGifts(); // ✅ Atualiza a tela automaticamente
     });
 });
 
@@ -113,7 +112,7 @@ function atualizarSaudacao(){
 }
 
 
-// ---------------- FUNÇÕES DE NAVEGAÇÃO ----------------
+// ---------------- NAVEGAÇÃO ----------------
 window.showAdminLogin = function() {
     if(screenLogin) screenLogin.classList.add('hidden');
     if(screenAdminLogin) screenAdminLogin.classList.remove('hidden');
@@ -136,7 +135,6 @@ window.handleAdminLogin = function(event) {
         if(btnNewItem) btnNewItem.classList.remove('hidden');
         if(btnSettings) btnSettings.classList.remove('hidden');
         atualizarSaudacao();
-        renderGifts();
     } else {
         alert("❌ Senha incorreta!");
     }
@@ -169,7 +167,7 @@ window.handleLogout = function() {
 };
 
 
-// ---------------- RENDERIZAR ITENS (COM TRATAMENTO DE ERRO DE IMAGEM) ----------------
+// ---------------- RENDERIZAR ITENS ----------------
 function renderGifts() {
     if(!giftsGrid) return;
     giftsGrid.innerHTML = '';
@@ -183,11 +181,10 @@ function renderGifts() {
         const card = document.createElement('div');
         card.className = "card-item bg-white rounded-xl shadow-md p-6 border border-gray-100 flex flex-col justify-between hover:shadow-lg transition duration-200 relative";
         
-        // ✅ TRATAMENTO DE ERRO DE IMAGEM (RESOLVE O ERRO 5)
         if(gift.imagem && gift.imagem !== "") {
             const imgTest = new Image();
             imgTest.onload = () => card.style.backgroundImage = `url("${gift.imagem}")`;
-            imgTest.onerror = () => card.style.backgroundImage = ""; // Fundo limpo se imagem quebrar
+            imgTest.onerror = () => card.style.backgroundImage = "";
             imgTest.src = gift.imagem;
         }
 
@@ -226,7 +223,7 @@ window.openPixModal = function(giftId) {
 };
 
 
-// ---------------- MODAL EDITAR/ADICIONAR ITEM ----------------
+// ---------------- MODAL EDITAR/ADICIONAR ----------------
 window.openNewItemModal = function() {
     if(!editModal) return;
     document.getElementById('edit-modal-title').textContent = "Adicionar Novo Presente";
@@ -257,65 +254,88 @@ window.openEditModal = function(giftId) {
 };
 
 
-window.saveItem = function(event) {
+// ✅ AQUI FOI O PRINCIPAL ERRO: AGORA SALVA CERTO NO BANCO
+window.saveItem = async function(event) {
     event.preventDefault();
+
+    // Pega todos os valores
     const item = {
-        name: editName.value,
-        price: editPrice.value,
-        icon: editIcon.value,
-        imagem: editImagem.value,
-        pixKey: editPixKey.value
+        name: editName.value.trim(),
+        price: editPrice.value.trim(),
+        icon: editIcon.value.trim(),
+        imagem: editImagem.value.trim() || "",
+        pixKey: editPixKey.value.trim()
     };
 
-    if(editId.value) {
-        update(ref(db, `gifts/${editId.value}`), item);
-    } else {
-        push(ref(db, 'gifts'), item);
-    }
-    closeModal('edit-modal');
-};
-
-
-window.deleteItem = function() {
-    if(confirm("Tem certeza que deseja excluir este item? Essa ação não pode ser desfeita!")) {
-        remove(ref(db, `gifts/${editId.value}`));
+    try {
+        if(editId.value) {
+            // 📝 EDITAR ITEM EXISTENTE
+            const itemRef = ref(db, `gifts/${editId.value}`);
+            await update(itemRef, item); // ✅ Agora funciona!
+            alert("✅ Item atualizado com sucesso!");
+        } else {
+            // ➕ CRIAR NOVO ITEM
+            const giftsRef = ref(db, 'gifts');
+            await push(giftsRef, item); // ✅ Agora funciona!
+            alert("✅ Novo item adicionado!");
+        }
         closeModal('edit-modal');
+    } catch (erro) {
+        alert("❌ Erro ao salvar: " + erro.message);
+        console.error(erro);
     }
 };
 
 
-// ---------------- MODAL CONFIGURAÇÕES (RESOLVE ERRO 1 E 4) ----------------
+window.deleteItem = async function() {
+    if(confirm("Tem certeza que deseja excluir este item? Essa ação não pode ser desfeita!")) {
+        try {
+            const itemRef = ref(db, `gifts/${editId.value}`);
+            await remove(itemRef);
+            alert("✅ Item excluído!");
+            closeModal('edit-modal');
+        } catch (erro) {
+            alert("❌ Erro ao excluir: " + erro.message);
+        }
+    }
+};
+
+
+// ---------------- CONFIGURAÇÕES (TAMBÉM CORRIGIDO PARA SALVAR) ----------------
 window.openSettingsModal = function() {
     if(!settingsModal) return;
-    // Preenche dados atuais
     cfgLoginTitle.value = siteConfig.loginTitle || "";
     cfgLoginSubtitle.value = siteConfig.loginSubtitle || "";
     cfgMainTitle.value = siteConfig.mainTitle || "";
     cfgWelcomeText.value = siteConfig.welcomeText || "";
     cfgBgImage.value = siteConfig.backgroundImage || "";
     cfgFooterText.value = siteConfig.footerText || "";
-    cfgAdminPass.value = ""; // Limpa para não mostrar a senha
+    cfgAdminPass.value = "";
     settingsModal.classList.remove('hidden');
 };
 
 
-window.saveSettings = function(event) {
+window.saveSettings = async function(event) {
     event.preventDefault();
-    const novaSenha = cfgAdminPass.value.trim();
-    const configRef = ref(db, 'configuracoes');
-    
-    const dadosAtualizados = {
-        loginTitle: cfgLoginTitle.value,
-        loginSubtitle: cfgLoginSubtitle.value,
-        mainTitle: cfgMainTitle.value,
-        welcomeText: cfgWelcomeText.value,
-        backgroundImage: cfgBgImage.value,
-        footerText: cfgFooterText.value,
-        adminPassword: novaSenha ? novaSenha : ADMIN_PASSWORD // Mantém atual se não alterar
-    };
+    try {
+        const novaSenha = cfgAdminPass.value.trim();
+        const configRef = ref(db, 'configuracoes');
+        
+        const dadosAtualizados = {
+            loginTitle: cfgLoginTitle.value,
+            loginSubtitle: cfgLoginSubtitle.value,
+            mainTitle: cfgMainTitle.value,
+            welcomeText: cfgWelcomeText.value,
+            backgroundImage: cfgBgImage.value,
+            footerText: cfgFooterText.value,
+            adminPassword: novaSenha ? novaSenha : ADMIN_PASSWORD
+        };
 
-    update(configRef, dadosAtualizados);
-    ADMIN_PASSWORD = dadosAtualizados.adminPassword;
-    closeModal('settings-modal');
-    alert("✅ Configurações salvas com sucesso!");
+        await update(configRef, dadosAtualizados); // ✅ Agora salva configurações!
+        ADMIN_PASSWORD = dadosAtualizados.adminPassword;
+        closeModal('settings-modal');
+        alert("✅ Configurações salvas com sucesso!");
+    } catch (erro) {
+        alert("❌ Erro ao salvar configurações: " + erro.message);
+    }
 };
