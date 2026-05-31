@@ -42,7 +42,6 @@
         }
     </style>
 
-    <!-- ✅ Ordem correta dos arquivos -->
     <script type="module" src="./firebase.js"></script>
     <script type="module" src="./app.js"></script>
 </head>
@@ -73,18 +72,22 @@
         </div>
     </div>
 
-    <!-- Tela de Login do Administrador -->
+    <!-- Tela de Login do Administrador (AGORA COM EMAIL E SENHA) -->
     <div id="screen-admin-login" class="hidden flex-grow flex items-center justify-center p-4">
         <div class="bg-white/90 p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
             <div class="text-center mb-8">
                 <span class="text-4xl">🔐</span>
                 <h1 class="text-2xl font-bold text-gray-800 mt-2">Área Administrativa</h1>
-                <p class="text-gray-500 text-sm mt-1">Insira a senha para gerenciar os itens</p>
+                <p class="text-gray-500 text-sm mt-1">Acesso exclusivo para gerenciamento</p>
             </div>
             <form onsubmit="handleAdminLogin(event)">
+                <div class="mb-3">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="admin-email">E-mail</label>
+                    <input class="w-full px-4 py-3 rounded-lg border border-gray-300" type="email" id="admin-email" placeholder="seuemail@dominio.com" required>
+                </div>
                 <div class="mb-5">
                     <label class="block text-gray-700 text-sm font-semibold mb-2" for="admin-password">Senha</label>
-                    <input class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 transition" type="password" id="admin-password" placeholder="Digite a senha de acesso" required>
+                    <input class="w-full px-4 py-3 rounded-lg border border-gray-300" type="password" id="admin-password" placeholder="Sua senha de acesso" required>
                 </div>
                 <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform active:scale-95 shadow-md">
                     Entrar como Admin
@@ -218,7 +221,6 @@
                 <div class="mb-3">
                     <label class="block text-gray-700 text-sm font-semibold mb-1">Texto de Saudação</label>
                     <input type="text" id="cfg-welcome-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ex: Olá, [NOME]! Escolha seu presente...">
-                    <small class="text-gray-400">Use <code>[NOME]</code> onde quiser que apareça o nome do usuário</small>
                 </div>
                 <div class="mb-3">
                     <label class="block text-gray-700 text-sm font-semibold mb-1">URL Imagem de Fundo do Site</label>
@@ -227,10 +229,6 @@
                 <div class="mb-3">
                     <label class="block text-gray-700 text-sm font-semibold mb-1">Texto do Rodapé</label>
                     <input type="text" id="cfg-footer-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Nova Senha de Administrador</label>
-                    <input type="password" id="cfg-admin-pass" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Deixe vazio para não alterar">
                 </div>
 
                 <button type="submit" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
