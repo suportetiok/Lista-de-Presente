@@ -1,5 +1,5 @@
-// app.js - VERSÃO SEGURA COM AUTENTICAÇÃO
-import { db, auth, ref, onValue, set, update, push, remove, get, signInWithEmailAndPassword, signOut, onAuthStateChanged } from './firebase.js';
+// app.js - VERSÃO COM GOOGLE
+import { db, auth, providerGoogle, ref, onValue, set, update, push, remove, get, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from './firebase.js';
 
 // Variáveis Globais
 let isAdmin = false;
@@ -57,14 +57,17 @@ window.copyPixKey = function() {
 };
 
 
-// ✅ VERIFICA SE O USUÁRIO ESTÁ LOGADO (SEGURANÇA)
+// ✅ VERIFICA SE ESTÁ LOGADO
 onAuthStateChanged(auth, (user) => {
     if (user) {
         isAdmin = true;
+        usuarioAtualNome = user.displayName || "Administrador"; // Pega nome da conta Google
+        // Descomente a linha abaixo para ver o ID e copiar ele!
+        // console.log("SEU ID DE USUÁRIO É:", user.uid); 
     } else {
         isAdmin = false;
     }
-    renderGifts(); // Atualiza tela com permissões
+    renderGifts();
 });
 
 
@@ -72,7 +75,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const giftsRef = ref(db, 'gifts');
     const configRef = ref(db, 'configuracoes');
 
-    // Carrega configurações
     onValue(configRef, (snapshot) => {
         if (snapshot.exists()) {
             siteConfig = snapshot.val();
@@ -100,7 +102,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Carrega lista de presentes
     onValue(giftsRef, (snapshot) => {
         giftsData = [];
         snapshot.forEach((childSnapshot) => {
@@ -130,7 +131,7 @@ window.hideAdminLogin = function() {
 };
 
 
-// ✅ LOGIN REAL DO FIREBASE (AGORA SEGURO!)
+// ✅ LOGIN EMAIL/SENHA (CONTINUA O MESMO)
 window.handleAdminLogin = async function(event) {
     event.preventDefault();
     const email = document.getElementById('admin-email').value;
@@ -138,15 +139,28 @@ window.handleAdminLogin = async function(event) {
 
     try {
         await signInWithEmailAndPassword(auth, email, senha);
-        usuarioAtualNome = "Administrador";
         if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
         if(screenDashboard) screenDashboard.classList.remove('hidden');
         if(btnNewItem) btnNewItem.classList.remove('hidden');
         if(btnSettings) btnSettings.classList.remove('hidden');
         atualizarSaudacao();
-        alert("✅ Logado com sucesso! Você tem permissões de administrador.");
+        alert("✅ Logado com sucesso!");
     } catch (erro) {
         alert("❌ Erro no login: " + erro.message);
+    }
+};
+
+// ✅ NOVO: LOGIN COM GOOGLE
+window.loginComGoogle = async function() {
+    try {
+        await signInWithPopup(auth, providerGoogle);
+        if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
+        if(screenDashboard) screenDashboard.classList.remove('hidden');
+        if(btnNewItem) btnNewItem.classList.remove('hidden');
+        if(btnSettings) btnSettings.classList.remove('hidden');
+        alert("✅ Logado com Google!");
+    } catch (erro) {
+        alert("❌ Erro Google: " + erro.message);
     }
 };
 
@@ -169,7 +183,7 @@ window.handleLogin = function(event) {
 
 window.handleLogout = async function() {
     try {
-        await signOut(auth); // Desloga do Firebase
+        await signOut(auth);
     } catch (e) {}
     if(screenDashboard) screenDashboard.classList.add('hidden');
     if(screenLogin) screenLogin.classList.remove('hidden');
@@ -200,7 +214,6 @@ function renderGifts() {
             imgTest.src = gift.imagem;
         }
 
-        // ✅ SÓ MOSTRA BOTÃO DE EDITAR SE ESTIVER LOGADO COMO ADMIN
         const adminEditButton = isAdmin ? `
             <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
         ` : '';
@@ -238,7 +251,7 @@ window.openPixModal = function(giftId) {
 
 // ---------------- MODAL EDITAR/ADICIONAR ----------------
 window.openNewItemModal = function() {
-    if(!editModal || !isAdmin) return; // ✅ SÓ ADMIN PODE ABRIR
+    if(!editModal || !isAdmin) return;
     document.getElementById('edit-modal-title').textContent = "Adicionar Novo Presente";
     editId.value = "";
     editName.value = "";
@@ -253,7 +266,7 @@ window.openNewItemModal = function() {
 
 window.openEditModal = function(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
-    if(gift && editModal && isAdmin) { // ✅ SÓ ADMIN PODE ABRIR
+    if(gift && editModal && isAdmin) {
         document.getElementById('edit-modal-title').textContent = "Editar Presente";
         editId.value = gift.id;
         editName.value = gift.name;
@@ -267,7 +280,6 @@ window.openEditModal = function(giftId) {
 };
 
 
-// ✅ SALVAR: SÓ FUNCIONA SE ESTIVER AUTENTICADO
 window.saveItem = async function(event) {
     event.preventDefault();
     if(!isAdmin) { alert("❌ Apenas administradores podem alterar!"); return; }
@@ -333,7 +345,7 @@ window.saveSettings = async function(event) {
         const dadosAtualizados = {
             loginTitle: cfgLoginTitle.value,
             loginSubtitle: cfgLoginSubtitle.value,
-            mainTitle: cfgWelcomeText.value,
+            mainTitle: cfgMainTitle.value,
             welcomeText: cfgWelcomeText.value,
             backgroundImage: cfgBgImage.value,
             footerText: cfgFooterText.value
