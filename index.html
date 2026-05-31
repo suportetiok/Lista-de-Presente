@@ -1,248 +1,341 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Presentes Virtual</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+// app.js - Toda lógica CORRIGIDA: SALVA E ATUALIZA AGORA!
+import { db, ref, onValue, set, update, push, remove, get } from './firebase.js';
+
+// Variáveis Globais
+let ADMIN_PASSWORD = "admin123";
+let isAdmin = false;
+let giftsData = [];
+let siteConfig = {};
+let usuarioAtualNome = "";
+
+// Elementos da página
+const screenLogin = document.getElementById('screen-login');
+const screenAdminLogin = document.getElementById('screen-admin-login');
+const screenDashboard = document.getElementById('screen-dashboard');
+const giftsGrid = document.getElementById('gifts-grid');
+const welcomeText = document.getElementById('welcomeText');
+const footerText = document.getElementById('footer-text');
+const paginaPrincipal = document.getElementById('pagina-principal');
+const btnNewItem = document.getElementById('btn-new-item');
+const btnSettings = document.getElementById('btn-settings');
+
+// Elementos Modais
+const editModal = document.getElementById('edit-modal');
+const editId = document.getElementById('edit-id');
+const editName = document.getElementById('edit-name');
+const editPrice = document.getElementById('edit-price');
+const editIcon = document.getElementById('edit-icon');
+const editImagem = document.getElementById('edit-imagem');
+const editPixKey = document.getElementById('edit-pixkey');
+const btnDelete = document.getElementById('btn-delete');
+
+const pixModal = document.getElementById('pix-modal');
+const modalGiftName = document.getElementById('modal-gift-name');
+const modalGiftValue = document.getElementById('modal-gift-value');
+const modalQrCode = document.getElementById('modal-qr-code');
+const pixCopiaCola = document.getElementById('pix-copia-cola');
+
+const settingsModal = document.getElementById('settings-modal');
+const cfgLoginTitle = document.getElementById('cfg-login-title');
+const cfgLoginSubtitle = document.getElementById('cfg-login-subtitle');
+const cfgMainTitle = document.getElementById('cfg-main-title');
+const cfgWelcomeText = document.getElementById('cfg-welcome-text');
+const cfgBgImage = document.getElementById('cfg-bg-image');
+const cfgFooterText = document.getElementById('cfg-footer-text');
+const cfgAdminPass = document.getElementById('cfg-admin-pass');
+
+
+// ✅ FUNÇÕES GLOBAIS
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) modal.classList.add('hidden');
+};
+
+window.copyPixKey = function() {
+    if (!pixCopiaCola) return;
+    navigator.clipboard.writeText(pixCopiaCola.textContent)
+        .then(() => alert("✅ Código PIX copiado!"))
+        .catch(() => alert("❌ Erro ao copiar, copie manualmente."));
+};
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    const giftsRef = ref(db, 'gifts');
+    const configRef = ref(db, 'configuracoes');
+
+    // Carrega configurações
+    onValue(configRef, (snapshot) => {
+        if (snapshot.exists()) {
+            siteConfig = snapshot.val();
+            ADMIN_PASSWORD = siteConfig.adminPassword || "admin123";
+            
+            if(document.getElementById('login-title')) document.getElementById('login-title').textContent = siteConfig.loginTitle || "Lista de Presentes";
+            if(document.getElementById('login-subtitle')) document.getElementById('login-subtitle').textContent = siteConfig.loginSubtitle || "Identifique-se para acessar";
+            if(document.getElementById('main-title')) document.getElementById('main-title').textContent = siteConfig.mainTitle || "Presentes";
+            if(footerText) footerText.textContent = siteConfig.footerText || "© 2026 Lista de Presentes";
+
+            if(siteConfig.backgroundImage && siteConfig.backgroundImage !== "" && paginaPrincipal) {
+                paginaPrincipal.style.backgroundImage = `url("${siteConfig.backgroundImage}")`;
+            }
+
+            if(usuarioAtualNome !== "") atualizarSaudacao();
+
+        } else {
+            // Cria configurações padrão se não existir
+            set(configRef, {
+                loginTitle: "Lista de Presentes",
+                loginSubtitle: "Identifique-se para acessar a lista",
+                mainTitle: "Presentes",
+                welcomeText: "Olá, [NOME]! Escolha um item para presentear via PIX.",
+                footerText: "Lista de Presentes &copy; 2026",
+                backgroundImage: "",
+                adminPassword: "admin123"
+            });
+        }
+    });
+
+    // Carrega lista de presentes e ATUALIZA SEMPRE que mudar
+    onValue(giftsRef, (snapshot) => {
+        giftsData = [];
+        snapshot.forEach((childSnapshot) => {
+            giftsData.push({ id: childSnapshot.key, ...childSnapshot.val() });
+        });
+        renderGifts(); // ✅ Atualiza a tela automaticamente
+    });
+});
+
+
+function atualizarSaudacao(){
+    if(!welcomeText) return;
+    const textoBase = siteConfig.welcomeText || "Olá, [NOME]! Escolha um item para presentear via PIX.";
+    welcomeText.innerHTML = textoBase.replace("[NOME]", `<span class="font-semibold text-pink-600">${usuarioAtualNome}</span>`);
+}
+
+
+// ---------------- NAVEGAÇÃO ----------------
+window.showAdminLogin = function() {
+    if(screenLogin) screenLogin.classList.add('hidden');
+    if(screenAdminLogin) screenAdminLogin.classList.remove('hidden');
+};
+
+window.hideAdminLogin = function() {
+    if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
+    if(screenLogin) screenLogin.classList.remove('hidden');
+};
+
+
+window.handleAdminLogin = function(event) {
+    event.preventDefault();
+    const pass = document.getElementById('admin-password').value;
+    if(pass === ADMIN_PASSWORD) {
+        isAdmin = true;
+        usuarioAtualNome = "Administrador";
+        if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
+        if(screenDashboard) screenDashboard.classList.remove('hidden');
+        if(btnNewItem) btnNewItem.classList.remove('hidden');
+        if(btnSettings) btnSettings.classList.remove('hidden');
+        atualizarSaudacao();
+    } else {
+        alert("❌ Senha incorreta!");
+    }
+    document.getElementById('admin-password').value = "";
+};
+
+
+window.handleLogin = function(event) {
+    event.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    isAdmin = false;
     
-    <style>
-        body {
-            background-size: cover !important;
-            background-position: center center !important;
-            background-attachment: fixed !important;
-            background-repeat: no-repeat !important;
-            transition: background-image 0.3s ease;
+    if (username) {
+        usuarioAtualNome = username;
+        atualizarSaudacao();
+        if(screenLogin) screenLogin.classList.add('hidden');
+        if(screenDashboard) screenDashboard.classList.remove('hidden');
+        if(btnNewItem) btnNewItem.classList.add('hidden');
+        if(btnSettings) btnSettings.classList.add('hidden');
+    }
+};
+
+
+window.handleLogout = function() {
+    if(screenDashboard) screenDashboard.classList.add('hidden');
+    if(screenLogin) screenLogin.classList.remove('hidden');
+    isAdmin = false;
+    usuarioAtualNome = "";
+    document.getElementById('username').value = '';
+};
+
+
+// ---------------- RENDERIZAR ITENS ----------------
+function renderGifts() {
+    if(!giftsGrid) return;
+    giftsGrid.innerHTML = '';
+    
+    if(giftsData.length === 0) {
+        giftsGrid.innerHTML = '<p class="text-center text-gray-500 col-span-full bg-white/80 p-4 rounded-xl">Nenhum presente cadastrado ainda.</p>';
+        return;
+    }
+
+    giftsData.forEach(gift => {
+        const card = document.createElement('div');
+        card.className = "card-item bg-white rounded-xl shadow-md p-6 border border-gray-100 flex flex-col justify-between hover:shadow-lg transition duration-200 relative";
+        
+        if(gift.imagem && gift.imagem !== "") {
+            const imgTest = new Image();
+            imgTest.onload = () => card.style.backgroundImage = `url("${gift.imagem}")`;
+            imgTest.onerror = () => card.style.backgroundImage = "";
+            imgTest.src = gift.imagem;
         }
-        .card-item {
-            background-size: cover !important;
-            background-position: center center !important;
-            background-repeat: no-repeat !important;
-            position: relative;
-            overflow: hidden;
+
+        const adminEditButton = isAdmin ? `
+            <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
+        ` : '';
+
+        card.innerHTML = `
+            <div class="card-overlay"></div>
+            ${adminEditButton} 
+            <div class="card-content">
+                <div class="text-4xl mb-4 bg-pink-50/80 inline-block p-3 rounded-xl flex items-center justify-center">
+                    <img src="${gift.icon}" alt="Ícone" class="icon-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3099/3099358.png'">
+                </div>
+                <h2 class="text-lg font-bold text-gray-800 mb-1">${gift.name}</h2>
+                <p class="text-gray-600 text-sm mb-4">Valor estimado</p>
+                <p class="text-xl font-extrabold text-pink-600 mb-4">${gift.price}</p>
+                <button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-800/90 hover:bg-gray-900 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">Presentear via PIX</button>
+            </div>
+        `;
+        giftsGrid.appendChild(card);
+    });
+}
+
+
+// ---------------- MODAL PIX ----------------
+window.openPixModal = function(giftId) {
+    const gift = giftsData.find(g => g.id === giftId);
+    if (gift && pixModal) {
+        if(modalGiftName) modalGiftName.textContent = gift.name;
+        if(modalGiftValue) modalGiftValue.textContent = gift.price;
+        if(pixCopiaCola) pixCopiaCola.textContent = gift.pixKey;
+        if(modalQrCode) modalQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(gift.pixKey)}`;
+        pixModal.classList.remove('hidden');
+    }
+};
+
+
+// ---------------- MODAL EDITAR/ADICIONAR ----------------
+window.openNewItemModal = function() {
+    if(!editModal) return;
+    document.getElementById('edit-modal-title').textContent = "Adicionar Novo Presente";
+    editId.value = "";
+    editName.value = "";
+    editPrice.value = "";
+    editIcon.value = "";
+    editImagem.value = "";
+    editPixKey.value = "";
+    if(btnDelete) btnDelete.classList.add('hidden');
+    editModal.classList.remove('hidden');
+};
+
+
+window.openEditModal = function(giftId) {
+    const gift = giftsData.find(g => g.id === giftId);
+    if(gift && editModal) {
+        document.getElementById('edit-modal-title').textContent = "Editar Presente";
+        editId.value = gift.id;
+        editName.value = gift.name;
+        editPrice.value = gift.price;
+        editIcon.value = gift.icon;
+        editImagem.value = gift.imagem || "";
+        editPixKey.value = gift.pixKey;
+        if(btnDelete) btnDelete.classList.remove('hidden');
+        editModal.classList.remove('hidden');
+    }
+};
+
+
+// ✅ AQUI FOI O PRINCIPAL ERRO: AGORA SALVA CERTO NO BANCO
+window.saveItem = async function(event) {
+    event.preventDefault();
+
+    // Pega todos os valores
+    const item = {
+        name: editName.value.trim(),
+        price: editPrice.value.trim(),
+        icon: editIcon.value.trim(),
+        imagem: editImagem.value.trim() || "",
+        pixKey: editPixKey.value.trim()
+    };
+
+    try {
+        if(editId.value) {
+            // 📝 EDITAR ITEM EXISTENTE
+            const itemRef = ref(db, `gifts/${editId.value}`);
+            await update(itemRef, item); // ✅ Agora funciona!
+            alert("✅ Item atualizado com sucesso!");
+        } else {
+            // ➕ CRIAR NOVO ITEM
+            const giftsRef = ref(db, 'gifts');
+            await push(giftsRef, item); // ✅ Agora funciona!
+            alert("✅ Novo item adicionado!");
         }
-        .card-overlay {
-            background-color: rgba(255, 255, 255, 0.85);
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
+        closeModal('edit-modal');
+    } catch (erro) {
+        alert("❌ Erro ao salvar: " + erro.message);
+        console.error(erro);
+    }
+};
+
+
+window.deleteItem = async function() {
+    if(confirm("Tem certeza que deseja excluir este item? Essa ação não pode ser desfeita!")) {
+        try {
+            const itemRef = ref(db, `gifts/${editId.value}`);
+            await remove(itemRef);
+            alert("✅ Item excluído!");
+            closeModal('edit-modal');
+        } catch (erro) {
+            alert("❌ Erro ao excluir: " + erro.message);
         }
-        .card-content {
-            position: relative;
-            z-index: 2;
-        }
-        .icon-img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-            border-radius: 8px;
-        }
-    </style>
+    }
+};
 
-    <!-- ✅ Ordem correta dos arquivos -->
-    <script type="module" src="./firebase.js"></script>
-    <script type="module" src="./app.js"></script>
-</head>
-<body id="pagina-principal" class="bg-gray-50 font-sans min-h-screen flex flex-col justify-between">
 
-    <!-- Tela de Login do Usuário -->
-    <div id="screen-login" class="flex-grow flex items-center justify-center p-4">
-        <div class="bg-white/90 p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
-            <div class="text-center mb-8">
-                <span class="text-4xl">🎁</span>
-                <h1 id="login-title" class="text-2xl font-bold text-gray-800 mt-2"></h1>
-                <p id="login-subtitle" class="text-gray-500 text-sm mt-1"></p>
-            </div>
-            <form onsubmit="handleLogin(event)">
-                <div class="mb-5">
-                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="username">Seu Nome</label>
-                    <input class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 transition" type="text" id="username" placeholder="Digite seu nome completo" required>
-                </div>
-                <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform active:scale-95 shadow-md">
-                    Entrar na Lista
-                </button>
-            </form>
-            <div class="mt-4 text-center">
-                <button onclick="showAdminLogin()" class="text-sm text-gray-500 hover:text-pink-500 underline">
-                    Acesso Administrativo
-                </button>
-            </div>
-        </div>
-    </div>
+// ---------------- CONFIGURAÇÕES (TAMBÉM CORRIGIDO PARA SALVAR) ----------------
+window.openSettingsModal = function() {
+    if(!settingsModal) return;
+    cfgLoginTitle.value = siteConfig.loginTitle || "";
+    cfgLoginSubtitle.value = siteConfig.loginSubtitle || "";
+    cfgMainTitle.value = siteConfig.mainTitle || "";
+    cfgWelcomeText.value = siteConfig.welcomeText || "";
+    cfgBgImage.value = siteConfig.backgroundImage || "";
+    cfgFooterText.value = siteConfig.footerText || "";
+    cfgAdminPass.value = "";
+    settingsModal.classList.remove('hidden');
+};
 
-    <!-- Tela de Login do Administrador -->
-    <div id="screen-admin-login" class="hidden flex-grow flex items-center justify-center p-4">
-        <div class="bg-white/90 p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
-            <div class="text-center mb-8">
-                <span class="text-4xl">🔐</span>
-                <h1 class="text-2xl font-bold text-gray-800 mt-2">Área Administrativa</h1>
-                <p class="text-gray-500 text-sm mt-1">Insira a senha para gerenciar os itens</p>
-            </div>
-            <form onsubmit="handleAdminLogin(event)">
-                <div class="mb-5">
-                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="admin-password">Senha</label>
-                    <input class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 transition" type="password" id="admin-password" placeholder="Digite a senha de acesso" required>
-                </div>
-                <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform active:scale-95 shadow-md">
-                    Entrar como Admin
-                </button>
-            </form>
-            <div class="mt-4 text-center">
-                <button onclick="hideAdminLogin()" class="text-sm text-gray-500 hover:text-pink-500 underline">
-                    Voltar
-                </button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Tela Principal / Lista de Presentes -->
-    <div id="screen-dashboard" class="hidden flex-grow container mx-auto px-4 py-8 max-w-5xl">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6 mb-8 bg-white/80 p-4 rounded-xl">
-            <div>
-                <h1 id="main-title" class="text-3xl font-bold text-gray-800">Presentes Fictícios</h1>
-                <p id="welcome-text" class="text-gray-600 mt-1"></p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <button id="btn-settings" onclick="openSettingsModal()" class="hidden bg-purple-500 hover:bg-purple-600 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
-                    ⚙️ Configurações
-                </button>
-                <button id="btn-new-item" onclick="openNewItemModal()" class="hidden bg-green-500 hover:bg-green-600 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
-                    + Novo Item
-                </button>
-                <button onclick="handleLogout()" class="text-sm text-gray-500 hover:text-red-500 underline transition">
-                    Sair
-                </button>
-            </div>
-        </div>
+window.saveSettings = async function(event) {
+    event.preventDefault();
+    try {
+        const novaSenha = cfgAdminPass.value.trim();
+        const configRef = ref(db, 'configuracoes');
+        
+        const dadosAtualizados = {
+            loginTitle: cfgLoginTitle.value,
+            loginSubtitle: cfgLoginSubtitle.value,
+            mainTitle: cfgMainTitle.value,
+            welcomeText: cfgWelcomeText.value,
+            backgroundImage: cfgBgImage.value,
+            footerText: cfgFooterText.value,
+            adminPassword: novaSenha ? novaSenha : ADMIN_PASSWORD
+        };
 
-        <div id="gifts-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <p class="text-center text-gray-500 col-span-full bg-white/80 p-4 rounded-xl">Carregando lista...</p>
-        </div>
-    </div>
-
-    <!-- Modal PIX -->
-    <div id="pix-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center relative border border-gray-100">
-            <button onclick="closeModal('pix-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-            
-            <h3 class="text-xl font-bold text-gray-800 mb-1" id="modal-gift-name">Nome do Presente</h3>
-            <p class="text-pink-600 font-bold text-lg mb-4" id="modal-gift-value">R$ 0,00</p>
-            
-            <div class="bg-gray-100 p-4 rounded-xl inline-block mb-4">
-                <img id="modal-qr-code" src="" alt="QR Code PIX" class="w-40 h-40 mx-auto">
-            </div>
-            
-            <p class="text-xs text-gray-500 mb-4 px-4">Aponte a câmera do seu banco para o QR Code acima para simular o pagamento.</p>
-            
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 flex items-center justify-between text-left mb-4">
-                <span class="text-xs text-gray-600 truncate mr-2" id="pix-copia-cola">chave-pix-ficticia-copia-e-cola...</span>
-                <button onclick="copyPixKey()" class="bg-pink-500 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-pink-600 transition shrink-0">Copiar</button>
-            </div>
-            
-            <button onclick="closeModal('pix-modal')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-lg transition">
-                Fechar
-            </button>
-        </div>
-    </div>
-
-    <!-- Modal Edição / Novo Item -->
-    <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative border border-gray-100">
-            <button onclick="closeModal('edit-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-            
-            <h3 class="text-xl font-bold text-gray-800 mb-4" id="edit-modal-title">Adicionar Novo Presente</h3>
-            
-            <form onsubmit="saveItem(event)">
-                <input type="hidden" id="edit-id">
-                
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Nome</label>
-                    <input type="text" id="edit-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Valor (ex: R$ 100,00)</label>
-                    <input type="text" id="edit-price" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">URL da Imagem do Ícone</label>
-                    <input type="text" id="edit-icon" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="https://exemplo.com/icone.png" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">URL Imagem de Fundo do Item (opcional)</label>
-                    <input type="text" id="edit-imagem" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="https://exemplo.com/fundo.jpg">
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Chave PIX</label>
-                    <textarea id="edit-pixkey" class="w-full px-3 py-2 border border-gray-300 rounded-lg" rows="3" required></textarea>
-                </div>
-
-                <div class="flex gap-2">
-                    <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-lg transition">
-                        Salvar
-                    </button>
-                    <button id="btn-delete" type="button" onclick="deleteItem()" class="hidden w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition">
-                        Excluir
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ✅ MODAL DE CONFIGURAÇÕES (ESTE FALTAVA ANTES) -->
-    <div id="settings-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative border border-gray-100">
-            <button onclick="closeModal('settings-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-            
-            <h3 class="text-xl font-bold text-gray-800 mb-4">⚙️ Configurações do Sistema</h3>
-            
-            <form onsubmit="saveSettings(event)">
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Título da Tela Inicial</label>
-                    <input type="text" id="cfg-login-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Subtítulo da Tela Inicial</label>
-                    <input type="text" id="cfg-login-subtitle" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Título Principal (Topo)</label>
-                    <input type="text" id="cfg-main-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Texto de Saudação</label>
-                    <input type="text" id="cfg-welcome-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ex: Olá, [NOME]! Escolha seu presente...">
-                    <small class="text-gray-400">Use <code>[NOME]</code> onde quiser que apareça o nome do usuário</small>
-                </div>
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">URL Imagem de Fundo do Site</label>
-                    <input type="text" id="cfg-bg-image" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="https://exemplo.com/fundo.jpg">
-                </div>
-                <div class="mb-3">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Texto do Rodapé</label>
-                    <input type="text" id="cfg-footer-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-semibold mb-1">Nova Senha de Administrador</label>
-                    <input type="password" id="cfg-admin-pass" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Deixe vazio para não alterar">
-                </div>
-
-                <button type="submit" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
-                    Salvar Alterações
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <footer id="rodape" class="text-center py-4 text-xs text-gray-400 border-t border-gray-100 bg-white/80 w-full">
-        <span id="footer-text">Lista de Presentes &copy; 2026</span>
-    </footer>
-
-</body>
-</html>
+        await update(configRef, dadosAtualizados); // ✅ Agora salva configurações!
+        ADMIN_PASSWORD = dadosAtualizados.adminPassword;
+        closeModal('settings-modal');
+        alert("✅ Configurações salvas com sucesso!");
+    } catch (erro) {
+        alert("❌ Erro ao salvar configurações: " + erro.message);
+    }
+};
