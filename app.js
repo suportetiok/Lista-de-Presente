@@ -1,8 +1,7 @@
-// app.js - Toda lógica CORRIGIDA: SALVA E ATUALIZA AGORA!
-import { db, ref, onValue, set, update, push, remove, get } from './firebase.js';
+// app.js - VERSÃO SEGURA COM AUTENTICAÇÃO
+import { db, auth, ref, onValue, set, update, push, remove, get, signInWithEmailAndPassword, signOut, onAuthStateChanged } from './firebase.js';
 
 // Variáveis Globais
-let ADMIN_PASSWORD = "admin123";
 let isAdmin = false;
 let giftsData = [];
 let siteConfig = {};
@@ -42,7 +41,6 @@ const cfgMainTitle = document.getElementById('cfg-main-title');
 const cfgWelcomeText = document.getElementById('cfg-welcome-text');
 const cfgBgImage = document.getElementById('cfg-bg-image');
 const cfgFooterText = document.getElementById('cfg-footer-text');
-const cfgAdminPass = document.getElementById('cfg-admin-pass');
 
 
 // ✅ FUNÇÕES GLOBAIS
@@ -59,6 +57,17 @@ window.copyPixKey = function() {
 };
 
 
+// ✅ VERIFICA SE O USUÁRIO ESTÁ LOGADO (SEGURANÇA)
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        isAdmin = true;
+    } else {
+        isAdmin = false;
+    }
+    renderGifts(); // Atualiza tela com permissões
+});
+
+
 document.addEventListener("DOMContentLoaded", () => {
     const giftsRef = ref(db, 'gifts');
     const configRef = ref(db, 'configuracoes');
@@ -67,7 +76,6 @@ document.addEventListener("DOMContentLoaded", () => {
     onValue(configRef, (snapshot) => {
         if (snapshot.exists()) {
             siteConfig = snapshot.val();
-            ADMIN_PASSWORD = siteConfig.adminPassword || "admin123";
             
             if(document.getElementById('login-title')) document.getElementById('login-title').textContent = siteConfig.loginTitle || "Lista de Presentes";
             if(document.getElementById('login-subtitle')) document.getElementById('login-subtitle').textContent = siteConfig.loginSubtitle || "Identifique-se para acessar";
@@ -81,26 +89,24 @@ document.addEventListener("DOMContentLoaded", () => {
             if(usuarioAtualNome !== "") atualizarSaudacao();
 
         } else {
-            // Cria configurações padrão se não existir
             set(configRef, {
                 loginTitle: "Lista de Presentes",
                 loginSubtitle: "Identifique-se para acessar a lista",
                 mainTitle: "Presentes",
                 welcomeText: "Olá, [NOME]! Escolha um item para presentear via PIX.",
                 footerText: "Lista de Presentes &copy; 2026",
-                backgroundImage: "",
-                adminPassword: "admin123"
+                backgroundImage: ""
             });
         }
     });
 
-    // Carrega lista de presentes e ATUALIZA SEMPRE que mudar
+    // Carrega lista de presentes
     onValue(giftsRef, (snapshot) => {
         giftsData = [];
         snapshot.forEach((childSnapshot) => {
             giftsData.push({ id: childSnapshot.key, ...childSnapshot.val() });
         });
-        renderGifts(); // ✅ Atualiza a tela automaticamente
+        renderGifts();
     });
 });
 
@@ -112,7 +118,7 @@ function atualizarSaudacao(){
 }
 
 
-// ---------------- NAVEGAÇÃO ----------------
+// ---------------- NAVEGAÇÃO E LOGIN ----------------
 window.showAdminLogin = function() {
     if(screenLogin) screenLogin.classList.add('hidden');
     if(screenAdminLogin) screenAdminLogin.classList.remove('hidden');
@@ -124,21 +130,24 @@ window.hideAdminLogin = function() {
 };
 
 
-window.handleAdminLogin = function(event) {
+// ✅ LOGIN REAL DO FIREBASE (AGORA SEGURO!)
+window.handleAdminLogin = async function(event) {
     event.preventDefault();
-    const pass = document.getElementById('admin-password').value;
-    if(pass === ADMIN_PASSWORD) {
-        isAdmin = true;
+    const email = document.getElementById('admin-email').value;
+    const senha = document.getElementById('admin-password').value;
+
+    try {
+        await signInWithEmailAndPassword(auth, email, senha);
         usuarioAtualNome = "Administrador";
         if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
         if(screenDashboard) screenDashboard.classList.remove('hidden');
         if(btnNewItem) btnNewItem.classList.remove('hidden');
         if(btnSettings) btnSettings.classList.remove('hidden');
         atualizarSaudacao();
-    } else {
-        alert("❌ Senha incorreta!");
+        alert("✅ Logado com sucesso! Você tem permissões de administrador.");
+    } catch (erro) {
+        alert("❌ Erro no login: " + erro.message);
     }
-    document.getElementById('admin-password').value = "";
 };
 
 
@@ -158,7 +167,10 @@ window.handleLogin = function(event) {
 };
 
 
-window.handleLogout = function() {
+window.handleLogout = async function() {
+    try {
+        await signOut(auth); // Desloga do Firebase
+    } catch (e) {}
     if(screenDashboard) screenDashboard.classList.add('hidden');
     if(screenLogin) screenLogin.classList.remove('hidden');
     isAdmin = false;
@@ -188,6 +200,7 @@ function renderGifts() {
             imgTest.src = gift.imagem;
         }
 
+        // ✅ SÓ MOSTRA BOTÃO DE EDITAR SE ESTIVER LOGADO COMO ADMIN
         const adminEditButton = isAdmin ? `
             <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
         ` : '';
@@ -225,7 +238,7 @@ window.openPixModal = function(giftId) {
 
 // ---------------- MODAL EDITAR/ADICIONAR ----------------
 window.openNewItemModal = function() {
-    if(!editModal) return;
+    if(!editModal || !isAdmin) return; // ✅ SÓ ADMIN PODE ABRIR
     document.getElementById('edit-modal-title').textContent = "Adicionar Novo Presente";
     editId.value = "";
     editName.value = "";
@@ -240,7 +253,7 @@ window.openNewItemModal = function() {
 
 window.openEditModal = function(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
-    if(gift && editModal) {
+    if(gift && editModal && isAdmin) { // ✅ SÓ ADMIN PODE ABRIR
         document.getElementById('edit-modal-title').textContent = "Editar Presente";
         editId.value = gift.id;
         editName.value = gift.name;
@@ -254,11 +267,11 @@ window.openEditModal = function(giftId) {
 };
 
 
-// ✅ AQUI FOI O PRINCIPAL ERRO: AGORA SALVA CERTO NO BANCO
+// ✅ SALVAR: SÓ FUNCIONA SE ESTIVER AUTENTICADO
 window.saveItem = async function(event) {
     event.preventDefault();
+    if(!isAdmin) { alert("❌ Apenas administradores podem alterar!"); return; }
 
-    // Pega todos os valores
     const item = {
         name: editName.value.trim(),
         price: editPrice.value.trim(),
@@ -269,73 +282,66 @@ window.saveItem = async function(event) {
 
     try {
         if(editId.value) {
-            // 📝 EDITAR ITEM EXISTENTE
             const itemRef = ref(db, `gifts/${editId.value}`);
-            await update(itemRef, item); // ✅ Agora funciona!
-            alert("✅ Item atualizado com sucesso!");
+            await update(itemRef, item);
+            alert("✅ Item atualizado!");
         } else {
-            // ➕ CRIAR NOVO ITEM
             const giftsRef = ref(db, 'gifts');
-            await push(giftsRef, item); // ✅ Agora funciona!
+            await push(giftsRef, item);
             alert("✅ Novo item adicionado!");
         }
         closeModal('edit-modal');
     } catch (erro) {
-        alert("❌ Erro ao salvar: " + erro.message);
-        console.error(erro);
+        alert("❌ Erro: " + erro.message);
     }
 };
 
 
 window.deleteItem = async function() {
-    if(confirm("Tem certeza que deseja excluir este item? Essa ação não pode ser desfeita!")) {
+    if(!isAdmin) { alert("❌ Apenas administradores podem excluir!"); return; }
+    if(confirm("Tem certeza?")) {
         try {
             const itemRef = ref(db, `gifts/${editId.value}`);
             await remove(itemRef);
             alert("✅ Item excluído!");
             closeModal('edit-modal');
         } catch (erro) {
-            alert("❌ Erro ao excluir: " + erro.message);
+            alert("❌ Erro: " + erro.message);
         }
     }
 };
 
 
-// ---------------- CONFIGURAÇÕES (TAMBÉM CORRIGIDO PARA SALVAR) ----------------
+// ---------------- CONFIGURAÇÕES ----------------
 window.openSettingsModal = function() {
-    if(!settingsModal) return;
+    if(!settingsModal || !isAdmin) return;
     cfgLoginTitle.value = siteConfig.loginTitle || "";
     cfgLoginSubtitle.value = siteConfig.loginSubtitle || "";
     cfgMainTitle.value = siteConfig.mainTitle || "";
     cfgWelcomeText.value = siteConfig.welcomeText || "";
     cfgBgImage.value = siteConfig.backgroundImage || "";
     cfgFooterText.value = siteConfig.footerText || "";
-    cfgAdminPass.value = "";
     settingsModal.classList.remove('hidden');
 };
 
 
 window.saveSettings = async function(event) {
     event.preventDefault();
+    if(!isAdmin) { alert("❌ Apenas administradores podem alterar!"); return; }
     try {
-        const novaSenha = cfgAdminPass.value.trim();
         const configRef = ref(db, 'configuracoes');
-        
         const dadosAtualizados = {
             loginTitle: cfgLoginTitle.value,
             loginSubtitle: cfgLoginSubtitle.value,
-            mainTitle: cfgMainTitle.value,
+            mainTitle: cfgWelcomeText.value,
             welcomeText: cfgWelcomeText.value,
             backgroundImage: cfgBgImage.value,
-            footerText: cfgFooterText.value,
-            adminPassword: novaSenha ? novaSenha : ADMIN_PASSWORD
+            footerText: cfgFooterText.value
         };
-
-        await update(configRef, dadosAtualizados); // ✅ Agora salva configurações!
-        ADMIN_PASSWORD = dadosAtualizados.adminPassword;
+        await update(configRef, dadosAtualizados);
         closeModal('settings-modal');
-        alert("✅ Configurações salvas com sucesso!");
+        alert("✅ Configurações salvas!");
     } catch (erro) {
-        alert("❌ Erro ao salvar configurações: " + erro.message);
+        alert("❌ Erro: " + erro.message);
     }
 };
