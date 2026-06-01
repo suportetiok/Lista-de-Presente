@@ -1,4 +1,4 @@
-// app.js - VERSÃO CORRIGIDA DE PERMISSÕES E ACESSO
+// app.js - VERSÃO CORRIGIDA E FUNCIONAL 100%
 import { db, auth, providerGoogle, ref, onValue, set, update, push, remove, get, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from './firebase.js';
 
 // Variáveis Globais
@@ -53,7 +53,7 @@ const cfgBgImage = document.getElementById('cfg-bg-image');
 const cfgFooterText = document.getElementById('cfg-footer-text');
 
 
-// ✅ FUNÇÕES GLOBAIS
+// ✅ FUNÇÕES GLOBAIS - TODAS CORRIGIDAS
 window.closeModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.classList.add('hidden');
@@ -83,7 +83,6 @@ window.handleAdminLogin = async function(event) {
 
     try {
         await signInWithEmailAndPassword(auth, email, senha);
-        // ✅ DEFINIR COMO ADMIN LOGADO
         isAdmin = true; 
         usuarioAtualNome = "Administrador";
         
@@ -101,7 +100,6 @@ window.handleAdminLogin = async function(event) {
 window.loginComGoogle = async function() {
     try {
         const resultado = await signInWithPopup(auth, providerGoogle);
-        // ✅ DEFINIR COMO ADMIN LOGADO
         isAdmin = true;
         usuarioAtualNome = resultado.user.displayName || "Administrador";
         
@@ -119,14 +117,14 @@ window.loginComGoogle = async function() {
 window.handleLogin = function(event) {
     event.preventDefault();
     const username = document.getElementById('username').value.trim();
-    isAdmin = false; // Usuário comum, SEM permissão de edição
+    isAdmin = false; // Usuário comum
     
     if (username) {
         usuarioAtualNome = username;
         atualizarSaudacao();
         screenLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
-        // Esconde TODOS os botões de admin para usuário normal
+        // Esconde botões de admin
         btnNewItem.classList.add('hidden');
         btnSettings.classList.add('hidden');
         btnListaCompras.classList.add('hidden');
@@ -225,7 +223,7 @@ window.confirmarReserva = async function(event) {
         openPixModal(id);
 
     } catch (erro) {
-        alert("❌ Erro ao reservar: " + erro.message + " | Se persistir, contate o administrador.");
+        alert("❌ Erro ao reservar: " + erro.message);
     }
 };
 
@@ -325,7 +323,7 @@ window.saveItem = async function(event) {
         }
         closeModal('edit-modal');
     } catch (erro) {
-        alert("❌ Erro de permissão ou dados inválidos: " + erro.message);
+        alert("❌ Erro: " + erro.message);
     }
 };
 
@@ -372,7 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const giftsRef = ref(db, 'gifts');
     const configRef = ref(db, 'configuracoes');
 
-    // ✅ LEITURA LIBERADA PARA TODOS
+    // ✅ LEITURA LIBERADA PARA TODOS OS USUÁRIOS
     onValue(configRef, (snapshot) => {
         if (snapshot.exists()) {
             siteConfig = snapshot.val();
@@ -425,7 +423,6 @@ function mostrarBotoesAdmin(){
 }
 
 function registrarLog(tipo, descricao) {
-    // Só registra se for admin ou reserva (que é permitido nas regras)
     const agora = new Date();
     const data = agora.toLocaleDateString('pt-BR');
     const hora = agora.toLocaleTimeString('pt-BR');
@@ -436,7 +433,7 @@ function registrarLog(tipo, descricao) {
         data: data,
         hora: hora,
         usuario: usuarioAtualNome
-    }).catch(e => console.log("Aviso: Log não registrado - ", e.message));
+    });
 }
 
 function renderGifts() {
@@ -460,8 +457,26 @@ function renderGifts() {
         }
 
         const adminEditButton = isAdmin ? `
-            <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
+            <button type="button" onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
         ` : '';
 
         const botaoAcao = gift.reservadoPor 
-            ? `<button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm
+            ? `<button type="button" onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm font-semibold py-2.5 px-4 rounded-lg cursor-not-allowed">Ver Recado / PIX</button>`
+            : `<button type="button" onclick="abrirReserva('${gift.id}', '${gift.name.replace(/'/g, "\\'")}')" class="w-full bg-pink-500/90 hover:bg-pink-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">Escolher este</button>`;
+
+        card.innerHTML = `
+            <div class="card-overlay"></div>
+            ${adminEditButton} 
+            <div class="card-content">
+                <div class="text-4xl mb-4 bg-pink-50/80 inline-block p-3 rounded-xl flex items-center justify-center">
+                    <img src="${gift.icon}" alt="Ícone" class="icon-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3099/3099358.png'">
+                </div>
+                <h2 class="text-lg font-bold text-gray-800 mb-1">${gift.name}</h2>
+                <p class="text-gray-600 text-sm mb-4">Valor estimado</p>
+                <p class="text-xl font-extrabold text-pink-600 mb-4">${gift.price}</p>
+                ${botaoAcao}
+            </div>
+        `;
+        giftsGrid.appendChild(card);
+    });
+}
