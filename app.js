@@ -1,4 +1,3 @@
-// app.js - VERSÃO CORRIGIDA E FUNCIONAL 100%
 import { db, auth, providerGoogle, ref, onValue, set, update, push, remove, get, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from './firebase.js';
 
 // Variáveis Globais
@@ -53,7 +52,7 @@ const cfgBgImage = document.getElementById('cfg-bg-image');
 const cfgFooterText = document.getElementById('cfg-footer-text');
 
 
-// ✅ FUNÇÕES GLOBAIS - TODAS CORRIGIDAS
+// FUNÇÕES GLOBAIS
 window.closeModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.classList.add('hidden');
@@ -117,14 +116,13 @@ window.loginComGoogle = async function() {
 window.handleLogin = function(event) {
     event.preventDefault();
     const username = document.getElementById('username').value.trim();
-    isAdmin = false; // Usuário comum
+    isAdmin = false;
     
     if (username) {
         usuarioAtualNome = username;
         atualizarSaudacao();
         screenLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
-        // Esconde botões de admin
         btnNewItem.classList.add('hidden');
         btnSettings.classList.add('hidden');
         btnListaCompras.classList.add('hidden');
@@ -200,7 +198,7 @@ window.abrirReserva = function(giftId, nomeItem) {
     }
     reservaId.value = giftId;
     reservaNomeItem.textContent = nomeItem;
-    reservaNome.value = usuarioAtualNome; // Nome já preenchido
+    reservaNome.value = usuarioAtualNome;
     reservaModal.classList.remove('hidden');
 };
 
@@ -223,7 +221,7 @@ window.confirmarReserva = async function(event) {
         openPixModal(id);
 
     } catch (erro) {
-        alert("❌ Erro ao reservar: " + erro.message);
+        alert("❌ Erro ao reservar: " + erro.message + " | Se persistir, contate o administrador.");
     }
 };
 
@@ -323,7 +321,7 @@ window.saveItem = async function(event) {
         }
         closeModal('edit-modal');
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro de permissão ou dados inválidos: " + erro.message);
     }
 };
 
@@ -370,7 +368,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const giftsRef = ref(db, 'gifts');
     const configRef = ref(db, 'configuracoes');
 
-    // ✅ LEITURA LIBERADA PARA TODOS OS USUÁRIOS
     onValue(configRef, (snapshot) => {
         if (snapshot.exists()) {
             siteConfig = snapshot.val();
@@ -433,7 +430,7 @@ function registrarLog(tipo, descricao) {
         data: data,
         hora: hora,
         usuario: usuarioAtualNome
-    });
+    }).catch(e => console.log("Aviso: Log não registrado - ", e.message));
 }
 
 function renderGifts() {
@@ -457,12 +454,12 @@ function renderGifts() {
         }
 
         const adminEditButton = isAdmin ? `
-            <button type="button" onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
+            <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
         ` : '';
 
         const botaoAcao = gift.reservadoPor 
-            ? `<button type="button" onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm font-semibold py-2.5 px-4 rounded-lg cursor-not-allowed">Ver Recado / PIX</button>`
-            : `<button type="button" onclick="abrirReserva('${gift.id}', '${gift.name.replace(/'/g, "\\'")}')" class="w-full bg-pink-500/90 hover:bg-pink-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">Escolher este</button>`;
+            ? `<button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm font-semibold py-2.5 px-4 rounded-lg cursor-not-allowed">Ver Recado / PIX</button>`
+            : `<button onclick="abrirReserva('${gift.id}', '${gift.name.replace(/'/g, "\\'")}')" class="w-full bg-pink-500/90 hover:bg-pink-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">Escolher este</button>`;
 
         card.innerHTML = `
             <div class="card-overlay"></div>
