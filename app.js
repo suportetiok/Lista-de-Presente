@@ -1,4 +1,4 @@
-// app.js - VERSÃO CORRIGIDA FINAL
+// app.js - VERSÃO CORRIGIDA DE PERMISSÕES E ACESSO
 import { db, auth, providerGoogle, ref, onValue, set, update, push, remove, get, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from './firebase.js';
 
 // Variáveis Globais
@@ -41,7 +41,7 @@ const modalMensagemRecado = document.getElementById('modal-mensagem-recado');
 const reservaModal = document.getElementById('reserva-modal');
 const reservaId = document.getElementById('reserva-id');
 const reservaNomeItem = document.getElementById('reserva-nome-item');
-const reservaNome = document.getElementById('reserva-nome'); // CAMPO NOME
+const reservaNome = document.getElementById('reserva-nome');
 const reservaMensagem = document.getElementById('reserva-mensagem');
 
 const settingsModal = document.getElementById('settings-modal');
@@ -67,13 +67,13 @@ window.copyPixKey = function() {
 };
 
 window.showAdminLogin = function() {
-    if(screenLogin) screenLogin.classList.add('hidden');
-    if(screenAdminLogin) screenAdminLogin.classList.remove('hidden');
+    screenLogin.classList.add('hidden');
+    screenAdminLogin.classList.remove('hidden');
 };
 
 window.hideAdminLogin = function() {
-    if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
-    if(screenLogin) screenLogin.classList.remove('hidden');
+    screenAdminLogin.classList.add('hidden');
+    screenLogin.classList.remove('hidden');
 };
 
 window.handleAdminLogin = async function(event) {
@@ -83,27 +83,33 @@ window.handleAdminLogin = async function(event) {
 
     try {
         await signInWithEmailAndPassword(auth, email, senha);
-        // Se chegou aqui, login deu certo
+        // ✅ DEFINIR COMO ADMIN LOGADO
+        isAdmin = true; 
+        usuarioAtualNome = "Administrador";
+        
         screenAdminLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
-        alert("✅ Logado com sucesso!");
+        alert("✅ Logado como Administrador!");
     } catch (erro) {
-        console.error("ERRO LOGIN:", erro);
-        alert("❌ Erro no login: " + erro.message + " Verifique e-mail/senha ou permissões.");
+        console.error("ERRO LOGIN EMAIL:", erro);
+        alert("❌ Erro: Verifique e-mail, senha ou regras do banco.");
     }
 };
 
 window.loginComGoogle = async function() {
     try {
         const resultado = await signInWithPopup(auth, providerGoogle);
+        // ✅ DEFINIR COMO ADMIN LOGADO
+        isAdmin = true;
         usuarioAtualNome = resultado.user.displayName || "Administrador";
+        
         screenAdminLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
-        alert("✅ Logado com Google com sucesso!");
+        alert("✅ Logado com Google como Administrador!");
     } catch (erro) {
         console.error("ERRO GOOGLE:", erro);
         alert("❌ Erro ao logar com Google: " + erro.message);
@@ -113,14 +119,14 @@ window.loginComGoogle = async function() {
 window.handleLogin = function(event) {
     event.preventDefault();
     const username = document.getElementById('username').value.trim();
-    isAdmin = false;
+    isAdmin = false; // Usuário comum, SEM permissão de edição
     
     if (username) {
         usuarioAtualNome = username;
         atualizarSaudacao();
         screenLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
-        // Esconde botões de admin para usuário comum
+        // Esconde TODOS os botões de admin para usuário normal
         btnNewItem.classList.add('hidden');
         btnSettings.classList.add('hidden');
         btnListaCompras.classList.add('hidden');
@@ -140,7 +146,7 @@ window.handleLogout = async function() {
 };
 
 window.openNewItemModal = function() {
-    if(!editModal || !isAdmin) return;
+    if(!editModal || !isAdmin) { alert("❌ Acesso restrito ao administrador!"); return; }
     document.getElementById('edit-modal-title').textContent = "Adicionar Novo Presente";
     editId.value = "";
     editName.value = "";
@@ -153,8 +159,9 @@ window.openNewItemModal = function() {
 };
 
 window.openEditModal = function(giftId) {
+    if(!isAdmin) { alert("❌ Acesso restrito ao administrador!"); return; }
     const gift = giftsData.find(g => g.id === giftId);
-    if(gift && editModal && isAdmin) {
+    if(gift) {
         document.getElementById('edit-modal-title').textContent = "Editar Presente";
         editId.value = gift.id;
         editName.value = gift.name;
@@ -187,7 +194,6 @@ window.openPixModal = function(giftId) {
     pixModal.classList.remove('hidden');
 };
 
-// ✅ CORRIGIDO: Abre reserva e preenche nome automaticamente
 window.abrirReserva = function(giftId, nomeItem) {
     const gift = giftsData.find(g => g.id === giftId);
     if(gift && gift.reservadoPor) {
@@ -196,8 +202,7 @@ window.abrirReserva = function(giftId, nomeItem) {
     }
     reservaId.value = giftId;
     reservaNomeItem.textContent = nomeItem;
-    // COLOCA O NOME QUE A PESSOA DIGITOU LOGO NO INÍCIO
-    reservaNome.value = usuarioAtualNome; 
+    reservaNome.value = usuarioAtualNome; // Nome já preenchido
     reservaModal.classList.remove('hidden');
 };
 
@@ -220,13 +225,12 @@ window.confirmarReserva = async function(event) {
         openPixModal(id);
 
     } catch (erro) {
-        alert("❌ Erro ao reservar: " + erro.message);
+        alert("❌ Erro ao reservar: " + erro.message + " | Se persistir, contate o administrador.");
     }
 };
 
-// ✅ CORRIGIDO: Função Lista de Compras
 window.abrirListaCompras = async function() {
-    if(!isAdmin) return;
+    if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     const conteudo = document.getElementById('lista-compras-conteudo');
     conteudo.innerHTML = '';
 
@@ -249,9 +253,8 @@ window.abrirListaCompras = async function() {
     document.getElementById('lista-compras-modal').classList.remove('hidden');
 };
 
-// ✅ CORRIGIDO: Função Logs
 window.abrirLogs = async function() {
-    if(!isAdmin) return;
+    if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     const conteudo = document.getElementById('logs-conteudo');
     conteudo.innerHTML = '';
 
@@ -286,8 +289,7 @@ window.abrirLogs = async function() {
 };
 
 window.openSettingsModal = function() {
-    if(!settingsModal || !isAdmin) return;
-    // Carrega valores atuais nos campos
+    if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     cfgLoginTitle.value = siteConfig.loginTitle || "";
     cfgLoginSubtitle.value = siteConfig.loginSubtitle || "";
     cfgMainTitle.value = siteConfig.mainTitle || "";
@@ -323,13 +325,13 @@ window.saveItem = async function(event) {
         }
         closeModal('edit-modal');
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro de permissão ou dados inválidos: " + erro.message);
     }
 };
 
 window.deleteItem = async function() {
     if(!isAdmin) { alert("❌ Apenas administradores podem excluir!"); return; }
-    if(confirm("Tem certeza que deseja excluir?")) {
+    if(confirm("Tem certeza que deseja excluir? Essa ação não pode ser desfeita!")) {
         try {
             const nomeExcluido = giftsData.find(g => g.id === editId.value)?.name || editId.value;
             const itemRef = ref(db, `gifts/${editId.value}`);
@@ -366,23 +368,11 @@ window.saveSettings = async function(event) {
 };
 
 
-// ✅ VERIFICA SE ESTÁ LOGADO
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        isAdmin = true;
-        usuarioAtualNome = user.displayName || "Administrador";
-        mostrarBotoesAdmin();
-    } else {
-        isAdmin = false;
-    }
-    renderGifts();
-});
-
-
 document.addEventListener("DOMContentLoaded", () => {
     const giftsRef = ref(db, 'gifts');
     const configRef = ref(db, 'configuracoes');
 
+    // ✅ LEITURA LIBERADA PARA TODOS
     onValue(configRef, (snapshot) => {
         if (snapshot.exists()) {
             siteConfig = snapshot.val();
@@ -399,7 +389,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if(usuarioAtualNome !== "") atualizarSaudacao();
 
         } else {
-            // Cria configurações padrão se não existir
             set(configRef, {
                 loginTitle: "Lista de Presentes",
                 loginSubtitle: "Identifique-se para acessar a lista",
@@ -436,6 +425,7 @@ function mostrarBotoesAdmin(){
 }
 
 function registrarLog(tipo, descricao) {
+    // Só registra se for admin ou reserva (que é permitido nas regras)
     const agora = new Date();
     const data = agora.toLocaleDateString('pt-BR');
     const hora = agora.toLocaleTimeString('pt-BR');
@@ -446,7 +436,7 @@ function registrarLog(tipo, descricao) {
         data: data,
         hora: hora,
         usuario: usuarioAtualNome
-    });
+    }).catch(e => console.log("Aviso: Log não registrado - ", e.message));
 }
 
 function renderGifts() {
@@ -474,22 +464,4 @@ function renderGifts() {
         ` : '';
 
         const botaoAcao = gift.reservadoPor 
-            ? `<button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm font-semibold py-2.5 px-4 rounded-lg cursor-not-allowed">Ver Recado / PIX</button>`
-            : `<button onclick="abrirReserva('${gift.id}', '${gift.name.replace(/'/g, "\\'")}')" class="w-full bg-pink-500/90 hover:bg-pink-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">Escolher este</button>`;
-
-        card.innerHTML = `
-            <div class="card-overlay"></div>
-            ${adminEditButton} 
-            <div class="card-content">
-                <div class="text-4xl mb-4 bg-pink-50/80 inline-block p-3 rounded-xl flex items-center justify-center">
-                    <img src="${gift.icon}" alt="Ícone" class="icon-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3099/3099358.png'">
-                </div>
-                <h2 class="text-lg font-bold text-gray-800 mb-1">${gift.name}</h2>
-                <p class="text-gray-600 text-sm mb-4">Valor estimado</p>
-                <p class="text-xl font-extrabold text-pink-600 mb-4">${gift.price}</p>
-                ${botaoAcao}
-            </div>
-        `;
-        giftsGrid.appendChild(card);
-    });
-}
+            ? `<button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm
