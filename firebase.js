@@ -1,4 +1,4 @@
-// firebase.js - VERSÃO COM LOGS
+// firebase.js - VERSÃO CORRIGIDA
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, update, push, remove, get } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 import { 
@@ -10,7 +10,7 @@ import {
   onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-// 🔒 SUAS CHAVES
+// 🔒 SUAS CHAVES (MANTIDAS)
 const firebaseConfig = {
     apiKey: "AIzaSyC7QQJ_c5wmd3GffLYDrQ3xG44LdXSApFg",
     authDomain: "lista-de-presentes-33c7f.firebaseapp.com",
