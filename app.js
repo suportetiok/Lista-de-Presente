@@ -1,4 +1,4 @@
-// app.js - VERSÃO FINAL COM TODAS AS MELHORIAS SOLICITADAS
+// app.js - VERSÃO CORRIGIDA FINAL
 import { db, auth, providerGoogle, ref, onValue, set, update, push, remove, get, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from './firebase.js';
 
 // Variáveis Globais
@@ -41,7 +41,7 @@ const modalMensagemRecado = document.getElementById('modal-mensagem-recado');
 const reservaModal = document.getElementById('reserva-modal');
 const reservaId = document.getElementById('reserva-id');
 const reservaNomeItem = document.getElementById('reserva-nome-item');
-const reservaNome = document.getElementById('reserva-nome');
+const reservaNome = document.getElementById('reserva-nome'); // CAMPO NOME
 const reservaMensagem = document.getElementById('reserva-mensagem');
 
 const settingsModal = document.getElementById('settings-modal');
@@ -83,13 +83,15 @@ window.handleAdminLogin = async function(event) {
 
     try {
         await signInWithEmailAndPassword(auth, email, senha);
-        if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
-        if(screenDashboard) screenDashboard.classList.remove('hidden');
+        // Se chegou aqui, login deu certo
+        screenAdminLogin.classList.add('hidden');
+        screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
         alert("✅ Logado com sucesso!");
     } catch (erro) {
-        alert("❌ Erro no login: " + erro.message);
+        console.error("ERRO LOGIN:", erro);
+        alert("❌ Erro no login: " + erro.message + " Verifique e-mail/senha ou permissões.");
     }
 };
 
@@ -97,12 +99,13 @@ window.loginComGoogle = async function() {
     try {
         const resultado = await signInWithPopup(auth, providerGoogle);
         usuarioAtualNome = resultado.user.displayName || "Administrador";
-        if(screenAdminLogin) screenAdminLogin.classList.add('hidden');
-        if(screenDashboard) screenDashboard.classList.remove('hidden');
+        screenAdminLogin.classList.add('hidden');
+        screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
         alert("✅ Logado com Google com sucesso!");
     } catch (erro) {
+        console.error("ERRO GOOGLE:", erro);
         alert("❌ Erro ao logar com Google: " + erro.message);
     }
 };
@@ -115,12 +118,13 @@ window.handleLogin = function(event) {
     if (username) {
         usuarioAtualNome = username;
         atualizarSaudacao();
-        if(screenLogin) screenLogin.classList.add('hidden');
-        if(screenDashboard) screenDashboard.classList.remove('hidden');
-        if(btnNewItem) btnNewItem.classList.add('hidden');
-        if(btnSettings) btnSettings.classList.add('hidden');
-        if(btnListaCompras) btnListaCompras.classList.add('hidden');
-        if(btnLogs) btnLogs.classList.add('hidden');
+        screenLogin.classList.add('hidden');
+        screenDashboard.classList.remove('hidden');
+        // Esconde botões de admin para usuário comum
+        btnNewItem.classList.add('hidden');
+        btnSettings.classList.add('hidden');
+        btnListaCompras.classList.add('hidden');
+        btnLogs.classList.add('hidden');
     }
 };
 
@@ -128,8 +132,8 @@ window.handleLogout = async function() {
     try {
         await signOut(auth);
     } catch (e) {}
-    if(screenDashboard) screenDashboard.classList.add('hidden');
-    if(screenLogin) screenLogin.classList.remove('hidden');
+    screenDashboard.classList.add('hidden');
+    screenLogin.classList.remove('hidden');
     isAdmin = false;
     usuarioAtualNome = "";
     document.getElementById('username').value = '';
@@ -144,7 +148,7 @@ window.openNewItemModal = function() {
     editIcon.value = "";
     editImagem.value = "";
     editPixKey.value = "";
-    if(btnDelete) btnDelete.classList.add('hidden');
+    btnDelete.classList.add('hidden');
     editModal.classList.remove('hidden');
 };
 
@@ -158,7 +162,7 @@ window.openEditModal = function(giftId) {
         editIcon.value = gift.icon;
         editImagem.value = gift.imagem || "";
         editPixKey.value = gift.pixKey;
-        if(btnDelete) btnDelete.classList.remove('hidden');
+        btnDelete.classList.remove('hidden');
         editModal.classList.remove('hidden');
     }
 };
@@ -167,23 +171,23 @@ window.openPixModal = function(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
     if (!gift) return;
 
-    // SE ESTIVER RESERVADO, MOSTRA DADOS
     if(gift.reservadoPor) {
-        if(modalReservadoPor) modalReservadoPor.textContent = gift.reservadoPor;
-        if(modalMensagemRecado) modalMensagemRecado.textContent = gift.mensagem || "Sem mensagem.";
+        modalReservadoPor.textContent = gift.reservadoPor;
+        modalMensagemRecado.textContent = gift.mensagem || "Sem mensagem.";
     } else {
-        if(modalReservadoPor) modalReservadoPor.textContent = "Você ainda não reservou";
-        if(modalMensagemRecado) modalMensagemRecado.textContent = "";
+        modalReservadoPor.textContent = "Ainda não reservado";
+        modalMensagemRecado.textContent = "";
     }
 
-    if(modalGiftName) modalGiftName.textContent = gift.name;
-    if(modalGiftValue) modalGiftValue.textContent = gift.price;
-    if(pixCopiaCola) pixCopiaCola.textContent = gift.pixKey;
-    if(modalQrCode) modalQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(gift.pixKey)}`;
+    modalGiftName.textContent = gift.name;
+    modalGiftValue.textContent = gift.price;
+    pixCopiaCola.textContent = gift.pixKey;
+    modalQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(gift.pixKey)}`;
     
     pixModal.classList.remove('hidden');
 };
 
+// ✅ CORRIGIDO: Abre reserva e preenche nome automaticamente
 window.abrirReserva = function(giftId, nomeItem) {
     const gift = giftsData.find(g => g.id === giftId);
     if(gift && gift.reservadoPor) {
@@ -192,6 +196,8 @@ window.abrirReserva = function(giftId, nomeItem) {
     }
     reservaId.value = giftId;
     reservaNomeItem.textContent = nomeItem;
+    // COLOCA O NOME QUE A PESSOA DIGITOU LOGO NO INÍCIO
+    reservaNome.value = usuarioAtualNome; 
     reservaModal.classList.remove('hidden');
 };
 
@@ -208,13 +214,9 @@ window.confirmarReserva = async function(event) {
             mensagem: mensagemPessoa
         });
 
-        // REGISTRA NO LOG
-        registrarLog("RESERVA", `Item ${id} reservado por ${nomePessoa}`);
-
+        registrarLog("RESERVA", `Item reservado por ${nomePessoa}`);
         alert("✅ Reserva confirmada! Agora é só pagar o PIX.");
         closeModal('reserva-modal');
-        
-        // Abre automaticamente o PIX após reservar
         openPixModal(id);
 
     } catch (erro) {
@@ -222,7 +224,8 @@ window.confirmarReserva = async function(event) {
     }
 };
 
-window.abrirListaCompras = function() {
+// ✅ CORRIGIDO: Função Lista de Compras
+window.abrirListaCompras = async function() {
     if(!isAdmin) return;
     const conteudo = document.getElementById('lista-compras-conteudo');
     conteudo.innerHTML = '';
@@ -246,34 +249,52 @@ window.abrirListaCompras = function() {
     document.getElementById('lista-compras-modal').classList.remove('hidden');
 };
 
+// ✅ CORRIGIDO: Função Logs
 window.abrirLogs = async function() {
     if(!isAdmin) return;
     const conteudo = document.getElementById('logs-conteudo');
     conteudo.innerHTML = '';
 
-    const logsRef = ref(db, 'logs');
-    const snapshot = await get(logsRef);
-    
-    if(!snapshot.exists()) {
-        conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhuma alteração registrada.</p>';
-    } else {
-        let listaLogs = [];
-        snapshot.forEach(child => {
-            listaLogs.unshift({ id: child.key, ...child.val() }); // mais recente primeiro
-        });
+    try {
+        const logsRef = ref(db, 'logs');
+        const snapshot = await get(logsRef);
+        
+        if(!snapshot.exists()) {
+            conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhuma alteração registrada.</p>';
+        } else {
+            let listaLogs = [];
+            snapshot.forEach(child => {
+                listaLogs.unshift({ id: child.key, ...child.val() });
+            });
 
-        listaLogs.forEach(log => {
-            const div = document.createElement('div');
-            div.className = 'p-2 border-b border-gray-100';
-            div.innerHTML = `
-                <span class="text-gray-500 text-xs">[${log.data} ${log.hora}]</span> 
-                <span class="font-semibold ${log.tipo === 'EXCLUSAO' ? 'text-red-600' : log.tipo === 'CRIACAO' ? 'text-green-600' : 'text-blue-600'}">${log.tipo}</span>
-                <span class="text-gray-700">: ${log.descricao}</span>
-            `;
-            conteudo.appendChild(div);
-        });
+            listaLogs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = 'p-2 border-b border-gray-100';
+                div.innerHTML = `
+                    <span class="text-gray-500 text-xs">[${log.data} ${log.hora}]</span> 
+                    <span class="font-semibold ${log.tipo === 'EXCLUSAO' ? 'text-red-600' : log.tipo === 'CRIACAO' ? 'text-green-600' : 'text-blue-600'}">${log.tipo}</span>
+                    <span class="text-gray-700">: ${log.descricao}</span>
+                `;
+                conteudo.appendChild(div);
+            });
+        }
+        document.getElementById('logs-modal').classList.remove('hidden');
+    } catch (erro) {
+        conteudo.innerHTML = `<p class="text-red-500 text-center">Erro ao carregar logs: ${erro.message}</p>`;
+        document.getElementById('logs-modal').classList.remove('hidden');
     }
-    document.getElementById('logs-modal').classList.remove('hidden');
+};
+
+window.openSettingsModal = function() {
+    if(!settingsModal || !isAdmin) return;
+    // Carrega valores atuais nos campos
+    cfgLoginTitle.value = siteConfig.loginTitle || "";
+    cfgLoginSubtitle.value = siteConfig.loginSubtitle || "";
+    cfgMainTitle.value = siteConfig.mainTitle || "";
+    cfgWelcomeText.value = siteConfig.welcomeText || "";
+    cfgBgImage.value = siteConfig.backgroundImage || "";
+    cfgFooterText.value = siteConfig.footerText || "";
+    settingsModal.classList.remove('hidden');
 };
 
 window.saveItem = async function(event) {
@@ -292,12 +313,12 @@ window.saveItem = async function(event) {
         if(editId.value) {
             const itemRef = ref(db, `gifts/${editId.value}`);
             await update(itemRef, item);
-            registrarLog("EDIÇÃO", `Item ${editId.value} alterado: ${item.name}`);
+            registrarLog("EDIÇÃO", `Item alterado: ${item.name}`);
             alert("✅ Item atualizado!");
         } else {
             const giftsRef = ref(db, 'gifts');
             const novoItemRef = await push(giftsRef, item);
-            registrarLog("CRIACAO", `Novo item criado: ${item.name} (ID: ${novoItemRef.key})`);
+            registrarLog("CRIACAO", `Novo item criado: ${item.name}`);
             alert("✅ Novo item adicionado!");
         }
         closeModal('edit-modal');
@@ -308,12 +329,12 @@ window.saveItem = async function(event) {
 
 window.deleteItem = async function() {
     if(!isAdmin) { alert("❌ Apenas administradores podem excluir!"); return; }
-    if(confirm("Tem certeza que deseja excluir? Essa ação não pode ser desfeita!")) {
+    if(confirm("Tem certeza que deseja excluir?")) {
         try {
-            const nomeItemExcluido = giftsData.find(g => g.id === editId.value)?.name || editId.value;
+            const nomeExcluido = giftsData.find(g => g.id === editId.value)?.name || editId.value;
             const itemRef = ref(db, `gifts/${editId.value}`);
             await remove(itemRef);
-            registrarLog("EXCLUSAO", `Item excluído: ${nomeItemExcluido} (ID: ${editId.value})`);
+            registrarLog("EXCLUSAO", `Item excluído: ${nomeExcluido}`);
             alert("✅ Item excluído!");
             closeModal('edit-modal');
         } catch (erro) {
@@ -366,18 +387,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (snapshot.exists()) {
             siteConfig = snapshot.val();
             
-            if(document.getElementById('login-title')) document.getElementById('login-title').textContent = siteConfig.loginTitle || "Lista de Presentes";
-            if(document.getElementById('login-subtitle')) document.getElementById('login-subtitle').textContent = siteConfig.loginSubtitle || "Identifique-se para acessar";
-            if(document.getElementById('main-title')) document.getElementById('main-title').textContent = siteConfig.mainTitle || "Presentes";
-            if(footerText) footerText.textContent = siteConfig.footerText || "© 2026 Lista de Presentes";
+            document.getElementById('login-title').textContent = siteConfig.loginTitle || "Lista de Presentes";
+            document.getElementById('login-subtitle').textContent = siteConfig.loginSubtitle || "Identifique-se para acessar";
+            document.getElementById('main-title').textContent = siteConfig.mainTitle || "Presentes";
+            footerText.textContent = siteConfig.footerText || "© 2026 Lista de Presentes";
 
-            if(siteConfig.backgroundImage && siteConfig.backgroundImage !== "" && paginaPrincipal) {
+            if(siteConfig.backgroundImage && paginaPrincipal) {
                 paginaPrincipal.style.backgroundImage = `url("${siteConfig.backgroundImage}")`;
             }
 
             if(usuarioAtualNome !== "") atualizarSaudacao();
 
         } else {
+            // Cria configurações padrão se não existir
             set(configRef, {
                 loginTitle: "Lista de Presentes",
                 loginSubtitle: "Identifique-se para acessar a lista",
@@ -407,10 +429,10 @@ function atualizarSaudacao(){
 }
 
 function mostrarBotoesAdmin(){
-    if(btnNewItem) btnNewItem.classList.remove('hidden');
-    if(btnSettings) btnSettings.classList.remove('hidden');
-    if(btnListaCompras) btnListaCompras.classList.remove('hidden');
-    if(btnLogs) btnLogs.classList.remove('hidden');
+    btnNewItem.classList.remove('hidden');
+    btnSettings.classList.remove('hidden');
+    btnListaCompras.classList.remove('hidden');
+    btnLogs.classList.remove('hidden');
 }
 
 function registrarLog(tipo, descricao) {
