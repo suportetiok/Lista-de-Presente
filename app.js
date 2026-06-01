@@ -5,6 +5,7 @@ let isAdmin = false;
 let giftsData = [];
 let siteConfig = {};
 let usuarioAtualNome = "";
+let itemAtualId = ""; // 🆕 Variável para guardar o ID do item aberto no modal
 
 // Elementos da página
 const screenLogin = document.getElementById('screen-login');
@@ -36,6 +37,7 @@ const modalQrCode = document.getElementById('modal-qr-code');
 const pixCopiaCola = document.getElementById('pix-copia-cola');
 const modalReservadoPor = document.getElementById('modal-reservado-por');
 const modalMensagemRecado = document.getElementById('modal-mensagem-recado');
+const botoesAcaoPix = document.getElementById('botoes-acao-pix'); // 🆕
 
 const reservaModal = document.getElementById('reserva-modal');
 const reservaId = document.getElementById('reserva-id');
@@ -174,12 +176,16 @@ window.openPixModal = function(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
     if (!gift) return;
 
+    itemAtualId = giftId; // Guarda o ID do item atual para usar nos botões
+
     if(gift.reservadoPor) {
         modalReservadoPor.textContent = gift.reservadoPor;
         modalMensagemRecado.textContent = gift.mensagem || "Sem mensagem.";
+        botoesAcaoPix.classList.remove('hidden'); // Mostra os botões de ação
     } else {
         modalReservadoPor.textContent = "Ainda não reservado";
         modalMensagemRecado.textContent = "";
+        botoesAcaoPix.classList.add('hidden'); // Esconde se não estiver reservado
     }
 
     modalGiftName.textContent = gift.name;
@@ -212,7 +218,8 @@ window.confirmarReserva = async function(event) {
         const itemRef = ref(db, `gifts/${id}`);
         await update(itemRef, {
             reservadoPor: nomePessoa,
-            mensagem: mensagemPessoa
+            mensagem: mensagemPessoa,
+            status: 'reservado' // 🆕 Adiciona status
         });
 
         registrarLog("RESERVA", `Item reservado por ${nomePessoa}`);
@@ -222,6 +229,63 @@ window.confirmarReserva = async function(event) {
 
     } catch (erro) {
         alert("❌ Erro ao reservar: " + erro.message + " | Se persistir, contate o administrador.");
+    }
+};
+
+// 🆕 FUNÇÃO: Confirmar Compra
+window.confirmarCompra = async function() {
+    if(!itemAtualId) return;
+    if(!confirm("Tem certeza que deseja CONFIRMAR a compra? O item será marcado como pago.")) return;
+
+    try {
+        const itemRef = ref(db, `gifts/${itemAtualId}`);
+        await update(itemRef, {
+            status: 'pago'
+        });
+        registrarLog("VENDA", `Compra confirmada para o item ID: ${itemAtualId}`);
+        alert("✅ Compra confirmada com sucesso!");
+        closeModal('pix-modal');
+    } catch (erro) {
+        alert("❌ Erro: " + erro.message);
+    }
+};
+
+// 🆕 FUNÇÃO: Cancelar Reserva
+window.cancelarReserva = async function() {
+    if(!itemAtualId) return;
+    if(!confirm("Tem certeza que deseja CANCELAR esta reserva? O item voltará a ficar disponível.")) return;
+
+    try {
+        const itemRef = ref(db, `gifts/${itemAtualId}`);
+        await update(itemRef, {
+            reservadoPor: null,
+            mensagem: null,
+            status: null
+        });
+        registrarLog("CANCELAMENTO", `Reserva cancelada. Item disponível novamente.`);
+        alert("✅ Reserva cancelada! Item liberado.");
+        closeModal('pix-modal');
+    } catch (erro) {
+        alert("❌ Erro: " + erro.message);
+    }
+};
+
+// 🆕 FUNÇÃO: Reativar Item (Disponível novamente) - Botão ADM
+window.reativarItem = async function(giftId) {
+    if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
+    if(!confirm("Deseja reativar este item? Ele aparecerá como disponível na lista.")) return;
+
+    try {
+        const itemRef = ref(db, `gifts/${giftId}`);
+        await update(itemRef, {
+            reservadoPor: null,
+            mensagem: null,
+            status: null
+        });
+        registrarLog("REATIVACAO", `Item reativado e disponível para reserva.`);
+        alert("✅ Item reativado com sucesso!");
+    } catch (erro) {
+        alert("❌ Erro: " + erro.message);
     }
 };
 
@@ -242,6 +306,10 @@ window.abrirListaCompras = async function() {
                 <p class="font-bold text-pink-700">${item.name} - ${item.price}</p>
                 <p class="text-sm"><strong>Presenteado por:</strong> ${item.reservadoPor}</p>
                 <p class="text-sm italic text-gray-600">Recado: ${item.mensagem || '---'}</p>
+                <p class="text-xs font-bold ${item.status === 'pago' ? 'text-green-600' : 'text-orange-500'}">Status: ${item.status === 'pago' ? 'PAGO' : 'RESERVADO'}</p>
+                <button onclick="reativarItem('${item.id}')" class="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">
+                    🔄 Reativar Item
+                </button>
             `;
             conteudo.appendChild(div);
         });
@@ -458,7 +526,7 @@ function renderGifts() {
         ` : '';
 
         const botaoAcao = gift.reservadoPor 
-            ? `<button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm font-semibold py-2.5 px-4 rounded-lg cursor-not-allowed">Ver Recado / PIX</button>`
+            ? `<button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm font-semibold py-2.5 px-4 rounded-lg">Ver Recado / PIX</button>`
             : `<button onclick="abrirReserva('${gift.id}', '${gift.name.replace(/'/g, "\\'")}')" class="w-full bg-pink-500/90 hover:bg-pink-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">Escolher este</button>`;
 
         card.innerHTML = `
