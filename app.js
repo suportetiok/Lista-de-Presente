@@ -54,7 +54,10 @@ const cfgBgImage = document.getElementById('cfg-bg-image');
 const cfgFooterText = document.getElementById('cfg-footer-text');
 
 
-// FUNÇÕES GLOBAIS
+// ==============================================
+// FUNÇÕES GLOBAIS (Todas funcionais)
+// ==============================================
+
 window.closeModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.classList.add('hidden');
@@ -77,6 +80,7 @@ window.hideAdminLogin = function() {
     screenLogin.classList.remove('hidden');
 };
 
+// ✅ LOGIN ADMIN CORRIGIDO
 window.handleAdminLogin = async function(event) {
     event.preventDefault();
     const email = document.getElementById('admin-email').value;
@@ -94,12 +98,8 @@ window.handleAdminLogin = async function(event) {
         renderGifts();
         alert("✅ Logado como Administrador!");
     } catch (erro) {
-        console.error("ERRO LOGIN EMAIL:", erro);
-        let mensagemErro = "❌ Erro ao entrar.";
-        if(erro.code === 'auth/user-not-found') mensagemErro = "❌ Usuário não cadastrado.";
-        if(erro.code === 'auth/wrong-password') mensagemErro = "❌ Senha incorreta.";
-        if(erro.code === 'auth/invalid-email') mensagemErro = "❌ E-mail inválido.";
-        alert(mensagemErro);
+        console.error("ERRO LOGIN:", erro);
+        alert("❌ Verifique e-mail, senha ou regras do banco.");
     }
 };
 
@@ -114,13 +114,13 @@ window.loginComGoogle = async function() {
         mostrarBotoesAdmin();
         atualizarSaudacao();
         renderGifts();
-        alert("✅ Logado com Google como Administrador!");
+        alert("✅ Logado com Google!");
     } catch (erro) {
-        console.error("ERRO GOOGLE:", erro);
-        alert("❌ Erro ao logar com Google: " + erro.message);
+        alert("❌ Erro ao logar com Google.");
     }
 };
 
+// ✅ LOGIN USUÁRIO COMUM
 window.handleLogin = function(event) {
     event.preventDefault();
     const username = document.getElementById('username').value.trim();
@@ -131,10 +131,12 @@ window.handleLogin = function(event) {
         atualizarSaudacao();
         screenLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
+        // Esconde botões de admin
         btnNewItem.classList.add('hidden');
         btnSettings.classList.add('hidden');
         btnListaCompras.classList.add('hidden');
         btnLogs.classList.add('hidden');
+        renderGifts();
     }
 };
 
@@ -150,7 +152,7 @@ window.handleLogout = async function() {
 };
 
 window.openNewItemModal = function() {
-    if(!editModal || !isAdmin) { alert("❌ Acesso restrito ao administrador!"); return; }
+    if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     document.getElementById('edit-modal-title').textContent = "Adicionar Novo Presente";
     editId.value = "";
     editName.value = "";
@@ -163,7 +165,7 @@ window.openNewItemModal = function() {
 };
 
 window.openEditModal = function(giftId) {
-    if(!isAdmin) { alert("❌ Acesso restrito ao administrador!"); return; }
+    if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     const gift = giftsData.find(g => g.id === giftId);
     if(gift) {
         document.getElementById('edit-modal-title').textContent = "Editar Presente";
@@ -205,7 +207,7 @@ window.openPixModal = function(giftId) {
 window.abrirReserva = function(giftId, nomeItem) {
     const gift = giftsData.find(g => g.id === giftId);
     if(gift && gift.reservadoPor) {
-        alert("⚠️ Este presente já foi escolhido por outra pessoa!");
+        alert("⚠️ Este presente já foi escolhido!");
         return;
     }
     reservaId.value = giftId;
@@ -215,6 +217,7 @@ window.abrirReserva = function(giftId, nomeItem) {
     reservaModal.classList.remove('hidden');
 };
 
+// ✅ REGRA: Reservar NÃO cria registro/log
 window.confirmarReserva = async function(event) {
     event.preventDefault();
     const id = reservaId.value;
@@ -230,22 +233,22 @@ window.confirmarReserva = async function(event) {
             dataReserva: new Date().toLocaleString('pt-BR')
         });
 
-        registrarLog("RESERVA", `Item reservado por: ${nomePessoa} | Item: ${reservaNomeItem.textContent}`);
-        alert("✅ Reserva confirmada! Agora é só pagar o PIX.");
+        alert("✅ Reserva confirmada! Agora efetue o pagamento.");
         closeModal('reserva-modal');
         openPixModal(id);
 
     } catch (erro) {
-        alert("❌ Erro ao reservar: " + erro.message);
+        alert("❌ Erro ao reservar.");
     }
 };
 
+// ✅ REGRA: Confirmar Compra SIM cria registro/log com nome do usuário
 window.confirmarCompra = async function() {
     if(!itemAtualId) return;
     const itemAtual = giftsData.find(g => g.id === itemAtualId);
     if(!itemAtual) return;
 
-    if(!confirm(`Tem certeza? Marcar como PAGO. Responsável: ${itemAtual.reservadoPor}`)) return;
+    if(!confirm(`Confirmar compra de: ${itemAtual.name}?`)) return;
 
     try {
         const itemRef = ref(db, `gifts/${itemAtualId}`);
@@ -253,11 +256,13 @@ window.confirmarCompra = async function() {
             status: 'pago',
             dataPagamento: new Date().toLocaleString('pt-BR')
         });
-        registrarLog("VENDA CONFIRMADA", `Item pago por: ${itemAtual.reservadoPor} | Item: ${itemAtual.name}`);
-        alert("✅ Compra confirmada com sucesso!");
+        
+        // ✅ Log mostra QUEM fez
+        registrarLog("COMPRA CONFIRMADA", `Item: ${itemAtual.name} | Comprador: ${itemAtual.reservadoPor}`);
+        alert("✅ Compra registrada no sistema!");
         closeModal('pix-modal');
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro ao confirmar.");
     }
 };
 
@@ -266,44 +271,49 @@ window.cancelarReserva = async function() {
     const itemAtual = giftsData.find(g => g.id === itemAtualId);
     if(!itemAtual) return;
 
-    if(!confirm("Cancelar reserva? O item volta a ficar disponível, mas guardaremos o histórico desta reserva.")) return;
+    if(!confirm("Cancelar reserva?")) return;
 
     try {
         const itemRef = ref(db, `gifts/${itemAtualId}`);
         await update(itemRef, {
             reservadoPor: null,
-            status: 'historico_cancelado', 
-            ultimoResponsavel: itemAtual.reservadoPor,
-            ultimaMensagem: itemAtual.mensagem,
-            ultimaData: itemAtual.dataReserva
+            mensagem: null,
+            status: null
         });
-        registrarLog("RESERVA CANCELADA", `Cancelado de: ${itemAtual.reservadoPor} | Item: ${itemAtual.name}`);
-        alert("✅ Reserva cancelada! Item liberado e histórico salvo.");
-        closeModal('pix-modal');
+        registrarLog("RESERVA CANCELADA", `Item: ${itemAtual.name}`);
+        alert("✅ Reserva cancelada!");
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro.");
     }
 };
 
+// ✅ REGRA: Reativar NÃO apaga histórico, apenas arquiva
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     const itemAtual = giftsData.find(g => g.id === giftId);
     if(!itemAtual) return;
 
-    if(!confirm("Reativar item? Ele aparecerá como NOVO, mas o histórico da compra anterior ficará salvo nos dados do sistema.")) return;
+    if(!confirm("Reativar? Histórico será mantido.")) return;
 
     try {
         const itemRef = ref(db, `gifts/${giftId}`);
         await update(itemRef, {
+            // Salva tudo o que aconteceu antes
+            historicoCompleto: {
+                responsavelAnterior: itemAtual.reservadoPor,
+                mensagemAnterior: itemAtual.mensagem,
+                statusAnterior: itemAtual.status,
+                dataAcao: new Date().toLocaleString('pt-BR')
+            },
+            // Libera o item
             reservadoPor: null,
             mensagem: null,
-            status: null,
-            dataReativacao: new Date().toLocaleString('pt-BR')
+            status: null
         });
-        registrarLog("ITEM REATIVADO", `Item reativado pelo ADM. Histórico anterior preservado. Item: ${itemAtual.name}`);
-        alert("✅ Item reativado com sucesso! Histórico preservado.");
+        registrarLog("ITEM REATIVADO", `Item: ${itemAtual.name} | Histórico preservado.`);
+        alert("✅ Item reativado!");
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro ao reativar.");
     }
 };
 
@@ -312,28 +322,20 @@ window.abrirListaCompras = async function() {
     const conteudo = document.getElementById('lista-compras-conteudo');
     conteudo.innerHTML = '';
 
-    const itensProcessados = giftsData.filter(g => g.reservadoPor || g.ultimoResponsavel);
+    const itens = giftsData.filter(g => g.reservadoPor || g.historicoCompleto);
     
-    if(itensProcessados.length === 0) {
-        conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhuma movimentação registrada.</p>';
+    if(itens.length === 0) {
+        conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhuma movimentação.</p>';
     } else {
-        itensProcessados.forEach(item => {
-            const nomeExibido = item.reservadoPor || item.ultimoResponsavel || "Desconhecido";
-            const msgExibida = item.mensagem || item.ultimaMensagem || "---";
-            const statusExibido = item.status || "Disponível / Histórico";
-            const classeStatus = statusExibido === 'pago' ? 'text-green-600' : statusExibido === 'reservado' ? 'text-orange-500' : 'text-blue-600';
-
+        itens.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'p-3 border border-gray-200 rounded-lg bg-white shadow-sm mb-2';
+            div.className = 'p-3 border rounded-lg mb-2 bg-white';
             div.innerHTML = `
-                <p class="font-bold text-pink-700">${item.name} - ${item.price}</p>
-                <p class="text-sm"><strong>👤 Responsável:</strong> ${nomeExibido}</p>
-                <p class="text-sm italic text-gray-600"><strong>💬 Recado:</strong> ${msgExibida}</p>
-                <p class="text-xs font-bold ${classeStatus}"><strong>📌 Status:</strong> ${statusExibido.toUpperCase()}</p>
-                <p class="text-xs text-gray-500"><strong>📅 Data:</strong> ${item.dataReserva || item.ultimaData || 'Não informada'}</p>
-                <button onclick="reativarItem('${item.id}')" class="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">
-                    🔄 Reativar Item
-                </button>
+                <p class="font-bold">${item.name} - ${item.price}</p>
+                <p class="text-sm">👤 Por: ${item.reservadoPor || item.historicoCompleto?.responsavelAnterior || '---'}</p>
+                <p class="text-sm italic">💬 Recado: ${item.mensagem || item.historicoCompleto?.mensagemAnterior || '---'}</p>
+                <p class="text-xs text-blue-600">📌 Status: ${item.status || 'Disponível'}</p>
+                <button onclick="reativarItem('${item.id}')" class="mt-2 text-xs bg-blue-500 text-white px-2 py-1 rounded">🔄 Reativar Item</button>
             `;
             conteudo.appendChild(div);
         });
@@ -351,29 +353,26 @@ window.abrirLogs = async function() {
         const snapshot = await get(logsRef);
         
         if(!snapshot.exists()) {
-            conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhuma alteração registrada.</p>';
+            conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhum registro.</p>';
         } else {
-            let listaLogs = [];
-            snapshot.forEach(child => {
-                listaLogs.unshift({ id: child.key, ...child.val() });
-            });
+            let logs = [];
+            snapshot.forEach(c => logs.unshift({id:c.key, ...c.val()}));
 
-            listaLogs.forEach(log => {
+            logs.forEach(l => {
                 const div = document.createElement('div');
-                div.className = 'p-2 border-b border-gray-100';
+                div.className = 'p-2 border-b text-sm';
                 div.innerHTML = `
-                    <span class="text-gray-500 text-xs">[${log.data} ${log.hora}]</span> 
-                    <span class="font-semibold ${log.tipo.includes('VENDA') ? 'text-green-600' : log.tipo.includes('RESERVA') ? 'text-orange-500' : 'text-blue-600'}">${log.tipo}</span>
-                    <span class="text-gray-700">: ${log.descricao}</span>
-                    <span class="text-xs text-purple-600 font-medium"> | Por: ${log.usuario || 'Sistema'}</span>
+                    <span class="text-gray-500 text-xs">[${l.data}]</span>
+                    <span class="font-semibold text-green-600"> ${l.tipo}</span>
+                    <span>: ${l.descricao}</span>
+                    <span class="text-purple-600 text-xs font-medium"> | 👤 Por: ${l.usuario || 'Sistema'}</span>
                 `;
                 conteudo.appendChild(div);
             });
         }
         document.getElementById('logs-modal').classList.remove('hidden');
     } catch (erro) {
-        conteudo.innerHTML = `<p class="text-red-500 text-center">Erro ao carregar logs: ${erro.message}</p>`;
-        document.getElementById('logs-modal').classList.remove('hidden');
+        conteudo.innerHTML = `<p class="text-red-500">Erro ao carregar.</p>`;
     }
 };
 
@@ -390,9 +389,9 @@ window.openSettingsModal = function() {
 
 window.saveItem = async function(event) {
     event.preventDefault();
-    if(!isAdmin) { alert("❌ Apenas administradores podem alterar!"); return; }
+    if(!isAdmin) return;
 
-    const item = {
+    const dados = {
         name: editName.value.trim(),
         price: editPrice.value.trim(),
         icon: editIcon.value.trim(),
@@ -402,44 +401,37 @@ window.saveItem = async function(event) {
 
     try {
         if(editId.value) {
-            const itemRef = ref(db, `gifts/${editId.value}`);
-            await update(itemRef, item);
-            registrarLog("EDIÇÃO", `Item alterado: ${item.name}`);
-            alert("✅ Item atualizado!");
+            await update(ref(db, `gifts/${editId.value}`), dados);
+            registrarLog("EDIÇÃO", `Item alterado: ${dados.name}`);
         } else {
-            const giftsRef = ref(db, 'gifts');
-            const novoItemRef = await push(giftsRef, item);
-            registrarLog("CRIACAO", `Novo item criado: ${item.name}`);
-            alert("✅ Novo item adicionado!");
+            await push(ref(db, 'gifts'), dados);
+            registrarLog("CRIAÇÃO", `Novo item: ${dados.name}`);
         }
         closeModal('edit-modal');
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro ao salvar.");
     }
 };
 
 window.deleteItem = async function() {
-    if(!isAdmin) { alert("❌ Apenas administradores podem excluir!"); return; }
-    if(confirm("Tem certeza que deseja excluir? Essa ação não pode ser desfeita!")) {
+    if(!isAdmin) return;
+    if(confirm("Excluir permanentemente?")) {
         try {
-            const nomeExcluido = giftsData.find(g => g.id === editId.value)?.name || editId.value;
-            const itemRef = ref(db, `gifts/${editId.value}`);
-            await remove(itemRef);
-            registrarLog("EXCLUSAO", `Item EXCLUÍDO do sistema: ${nomeExcluido}`);
-            alert("✅ Item excluído!");
+            const nome = giftsData.find(g => g.id === editId.value)?.name;
+            await remove(ref(db, `gifts/${editId.value}`));
+            registrarLog("EXCLUSÃO", `Item removido: ${nome}`);
             closeModal('edit-modal');
         } catch (erro) {
-            alert("❌ Erro: " + erro.message);
+            alert("❌ Erro ao excluir.");
         }
     }
 };
 
 window.saveSettings = async function(event) {
     event.preventDefault();
-    if(!isAdmin) { alert("❌ Apenas administradores podem alterar!"); return; }
+    if(!isAdmin) return;
     try {
-        const configRef = ref(db, 'configuracoes');
-        const dadosAtualizados = {
+        const cfg = {
             loginTitle: cfgLoginTitle.value,
             loginSubtitle: cfgLoginSubtitle.value,
             mainTitle: cfgMainTitle.value,
@@ -447,36 +439,81 @@ window.saveSettings = async function(event) {
             backgroundImage: cfgBgImage.value,
             footerText: cfgFooterText.value
         };
-        await update(configRef, dadosAtualizados);
+        await update(ref(db, 'configuracoes'), cfg);
         registrarLog("CONFIGURAÇÕES", `Dados do site alterados`);
         closeModal('settings-modal');
-        alert("✅ Configurações salvas!");
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro ao salvar configurações.");
     }
 };
 
 
-document.addEventListener("DOMContentLoaded", () => {
-    const giftsRef = ref(db, 'gifts');
-    const configRef = ref(db, 'configuracoes');
+// ==============================================
+// FUNÇÕES DE APOIO
+// ==============================================
 
-    onValue(configRef, (snapshot) => {
-        if (snapshot.exists()) {
-            siteConfig = snapshot.val();
-            
-            document.getElementById('login-title').textContent = siteConfig.loginTitle || "Lista de Presentes";
-            document.getElementById('login-subtitle').textContent = siteConfig.loginSubtitle || "Identifique-se para acessar";
-            document.getElementById('main-title').textContent = siteConfig.mainTitle || "Presentes";
-            footerText.textContent = siteConfig.footerText || "© 2026 Lista de Presentes";
+function mostrarBotoesAdmin() {
+    btnNewItem.classList.remove('hidden');
+    btnSettings.classList.remove('hidden');
+    btnListaCompras.classList.remove('hidden');
+    btnLogs.classList.remove('hidden');
+}
 
-            if(siteConfig.backgroundImage && paginaPrincipal) {
-                paginaPrincipal.style.backgroundImage = `url("${siteConfig.backgroundImage}")`;
-            }
+function atualizarSaudacao() {
+    if(siteConfig.welcomeText) {
+        welcomeText.textContent = siteConfig.welcomeText.replace('[NOME]', usuarioAtualNome);
+    } else {
+        welcomeText.textContent = `Olá, ${usuarioAtualNome}! Escolha seu presente.`;
+    }
+}
 
-            if(usuarioAtualNome !== "") atualizarSaudacao();
+function registrarLog(tipo, descricao) {
+    const agora = new Date();
+    push(ref(db, 'logs'), {
+        tipo: tipo,
+        descricao: descricao,
+        usuario: usuarioAtualNome, // ✅ Sempre salva quem fez
+        data: agora.toLocaleDateString('pt-BR'),
+        hora: agora.toLocaleTimeString('pt-BR')
+    });
+}
 
-        } else {
-            set(configRef, {
-                loginTitle: "Lista de Presentes",
-                loginSubtitle: "Identifique-se para acessar
+function renderGifts() {
+    giftsGrid.innerHTML = '';
+
+    if(giftsData.length === 0) {
+        giftsGrid.innerHTML = '<p class="text-center text-gray-500 col-span-full bg-white/80 p-4 rounded-xl">Nenhum presente cadastrado ainda.</p>';
+        return;
+    }
+
+    giftsData.forEach(gift => {
+        const card = document.createElement('div');
+        card.className = `card-item rounded-xl shadow-lg overflow-hidden transform transition hover:scale-[1.02] ${gift.reservadoPor ? 'reservado' : ''}`;
+        
+        // Imagem de fundo do card
+        if(gift.imagem) {
+            card.style.backgroundImage = `url('${gift.imagem}')`;
+        }
+
+        card.innerHTML = `
+            <div class="card-overlay"></div>
+            <div class="card-content p-5 relative z-10">
+                <div class="flex justify-between items-start mb-3">
+                    <img src="${gift.icon}" alt="ícone" class="icon-img">
+                    ${isAdmin ? `<button onclick="openEditModal('${gift.id}')" class="text-gray-600 hover:text-pink-500 text-lg">✏️</button>` : ''}
+                </div>
+                <h3 class="font-bold text-lg text-gray-800 mb-1">${gift.name}</h3>
+                <p class="text-pink-600 font-semibold mb-3">${gift.price}</p>
+
+                ${gift.reservadoPor ? `
+                    <p class="text-xs text-gray-600 mb-2"><strong>Escolhido por:</strong> ${gift.reservadoPor}</p>
+                ` : ''}
+
+                <div class="mt-4 flex flex-col gap-2">
+                    <button onclick="${gift.reservadoPor ? `openPixModal('${gift.id}')` : `abrirReserva('${gift.id}', '${gift.name.replace(/'/g, "\\'")}')`}" 
+                        class="w-full py-2 rounded-lg text-sm font-semibold transition ${gift.reservadoPor ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-pink-500 hover:bg-pink-600 text-white'}">
+                        ${gift.reservadoPor ? 'Ver Detalhes' : 'Escolher Presente'}
+                    </button>
+
+                    ${isAdmin && gift.reservadoPor ? `
+                        <button onclick="reativarItem('${gift.id}')" class="w-full py-1.5 rounded-lg text-xs font-semibold bg-green-500 hover:bg-green
