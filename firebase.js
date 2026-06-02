@@ -1,3 +1,14 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, push, remove, get } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  signInWithPopup,       
+  GoogleAuthProvider,    
+  signOut, 
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
 const firebaseConfig = {
     apiKey: "AIzaSyC7QQJ_c5wmd3GffLYDrQ3xG44LdXSApFg",
     authDomain: "lista-de-presentes-33c7f.firebaseapp.com",
