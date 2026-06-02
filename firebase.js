@@ -1,8 +1,9 @@
-// firebase.js - Configuração SEGURA e FUNCIONAL
+// firebase.js - CONFIGURAÇÃO SEGURA COM AUTENTICAÇÃO
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, update, push, remove, get } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-// 🔒 Suas chaves do Firebase
+// 🔒 SUAS CHAVES (SEGURAS AQUI)
 const firebaseConfig = {
     apiKey: "AIzaSyC7QQJ_c5wmd3GffLYDrQ3xG44LdXSApFg",
     authDomain: "lista-de-presentes-33c7f.firebaseapp.com",
@@ -15,6 +16,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app); // ✅ Agora com autenticação
 
-// ✅ Exporta TODAS as funções necessárias
-export { db, ref, onValue, set, update, push, remove, get };
+export { db, auth, ref, onValue, set, update, push, remove, get, signInWithEmailAndPassword, signOut, onAuthStateChanged };
