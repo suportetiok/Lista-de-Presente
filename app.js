@@ -83,15 +83,16 @@ window.handleAdminLogin = async function(event) {
     const senha = document.getElementById('admin-password').value;
 
     try {
+        // Login com e-mail e senha corrigido
         const userCredential = await signInWithEmailAndPassword(auth, email, senha);
         isAdmin = true; 
-        usuarioAtualNome = userCredential.user.email || "Administrador";
+        usuarioAtualNome = userCredential.user.email || "Administrador"; // Mostra o email como identificador
         
         screenAdminLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
-        renderGifts();
+        renderGifts(); // Garante que o lápis aparece logo ao entrar
         alert("✅ Logado como Administrador!");
     } catch (erro) {
         console.error("ERRO LOGIN EMAIL:", erro);
@@ -227,7 +228,7 @@ window.confirmarReserva = async function(event) {
             reservadoPor: nomePessoa,
             mensagem: mensagemPessoa,
             status: 'reservado',
-            dataReserva: new Date().toLocaleString('pt-BR')
+            dataReserva: new Date().toLocaleString('pt-BR') // Salva a data da reserva
         });
 
         registrarLog("RESERVA", `Item reservado por: ${nomePessoa} | Item: ${reservaNomeItem.textContent}`);
@@ -270,9 +271,12 @@ window.cancelarReserva = async function() {
 
     try {
         const itemRef = ref(db, `gifts/${itemAtualId}`);
+        // ✅ ALTERAÇÃO PRINCIPAL: Não apaga os dados, apenas move para histórico e libera o status
         await update(itemRef, {
+            // Muda apenas o status de disponibilidade
             reservadoPor: null,
             status: 'historico_cancelado', 
+            // GUARDA TUDO AQUI PARA SEMPRE
             ultimoResponsavel: itemAtual.reservadoPor,
             ultimaMensagem: itemAtual.mensagem,
             ultimaData: itemAtual.dataReserva
@@ -285,6 +289,7 @@ window.cancelarReserva = async function() {
     }
 };
 
+// ✅ ALTERAÇÃO: Reativar item mantém o registro anterior salvo
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     const itemAtual = giftsData.find(g => g.id === giftId);
@@ -295,9 +300,11 @@ window.reativarItem = async function(giftId) {
     try {
         const itemRef = ref(db, `gifts/${giftId}`);
         await update(itemRef, {
+            // Libera para novo uso
             reservadoPor: null,
             mensagem: null,
             status: null,
+            // Os dados antigos já foram salvos nos campos 'ultimo...' e NÃO são apagados aqui
             dataReativacao: new Date().toLocaleString('pt-BR')
         });
         registrarLog("ITEM REATIVADO", `Item reativado pelo ADM. Histórico anterior preservado. Item: ${itemAtual.name}`);
@@ -312,12 +319,14 @@ window.abrirListaCompras = async function() {
     const conteudo = document.getElementById('lista-compras-conteudo');
     conteudo.innerHTML = '';
 
+    // Mostra todos os itens que já tiveram interação, não só os atuais
     const itensProcessados = giftsData.filter(g => g.reservadoPor || g.ultimoResponsavel);
     
     if(itensProcessados.length === 0) {
         conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhuma movimentação registrada.</p>';
     } else {
         itensProcessados.forEach(item => {
+            // Define o que exibir: atual ou último histórico
             const nomeExibido = item.reservadoPor || item.ultimoResponsavel || "Desconhecido";
             const msgExibida = item.mensagem || item.ultimaMensagem || "---";
             const statusExibido = item.status || "Disponível / Histórico";
@@ -479,4 +488,96 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             set(configRef, {
                 loginTitle: "Lista de Presentes",
-                loginSubtitle: "Identifique-se para acessar
+                loginSubtitle: "Identifique-se para acessar a lista",
+                mainTitle: "Presentes",
+                welcomeText: "Olá, [NOME]! Escolha um item para presentear via PIX.",
+                footerText: "Lista de Presentes &copy; 2026",
+                backgroundImage: ""
+            });
+        }
+    });
+
+    onValue(giftsRef, (snapshot) => {
+        giftsData = [];
+        snapshot.forEach((childSnapshot) => {
+            giftsData.push({ id: childSnapshot.key, ...childSnapshot.val() });
+        });
+        renderGifts();
+    });
+});
+
+
+// FUNÇÕES AUXILIARES
+function atualizarSaudacao(){
+    if(!welcomeText) return;
+    const textoBase = siteConfig.welcomeText || "Olá, [NOME]! Escolha um item para presentear via PIX.";
+    welcomeText.innerHTML = textoBase.replace("[NOME]", `<span class="font-semibold text-pink-600">${usuarioAtualNome}</span>`);
+}
+
+function mostrarBotoesAdmin(){
+    btnNewItem.classList.remove('hidden');
+    btnSettings.classList.remove('hidden');
+    btnListaCompras.classList.remove('hidden');
+    btnLogs.classList.remove('hidden');
+}
+
+// ✅ Logs agora salvam QUEM fez a ação
+function registrarLog(tipo, descricao) {
+    const agora = new Date();
+    const data = agora.toLocaleDateString('pt-BR');
+    const hora = agora.toLocaleTimeString('pt-BR');
+    
+    push(ref(db, 'logs'), {
+        tipo: tipo,
+        descricao: descricao,
+        data: data,
+        hora: hora,
+        usuario: usuarioAtualNome // <-- Salva o nome/email de quem fez
+    }).catch(e => console.log("Aviso: Log não registrado - ", e.message));
+}
+
+function renderGifts() {
+    if(!giftsGrid) return;
+    giftsGrid.innerHTML = '';
+    
+    if(giftsData.length === 0) {
+        giftsGrid.innerHTML = '<p class="text-center text-gray-500 col-span-full bg-white/80 p-4 rounded-xl">Nenhum presente cadastrado ainda.</p>';
+        return;
+    }
+
+    giftsData.forEach(gift => {
+        const card = document.createElement('div');
+        card.className = `card-item bg-white rounded-xl shadow-md p-6 border border-gray-100 flex flex-col justify-between hover:shadow-lg transition duration-200 relative ${gift.reservadoPor ? 'reservado' : ''}`;
+        
+        if(gift.imagem && gift.imagem !== "") {
+            const imgTest = new Image();
+            imgTest.onload = () => card.style.backgroundImage = `url("${gift.imagem}")`;
+            imgTest.onerror = () => card.style.backgroundImage = "";
+            imgTest.src = gift.imagem;
+        }
+
+        // Lápis sempre aparece para admin
+        const adminEditButton = isAdmin ? `
+            <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
+        ` : '';
+
+        const botaoAcao = gift.reservadoPor 
+            ? `<button onclick="openPixModal('${gift.id}')" class="w-full bg-gray-500/90 text-white text-sm font-semibold py-2.5 px-4 rounded-lg">Ver Recado / PIX</button>`
+            : `<button onclick="abrirReserva('${gift.id}', '${gift.name.replace(/'/g, "\\'")}')" class="w-full bg-pink-500/90 hover:bg-pink-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition duration-150">Escolher este</button>`;
+
+        card.innerHTML = `
+            <div class="card-overlay"></div>
+            ${adminEditButton} 
+            <div class="card-content">
+                <div class="text-4xl mb-4 bg-pink-50/80 inline-block p-3 rounded-xl flex items-center justify-center">
+                    <img src="${gift.icon}" alt="Ícone" class="icon-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3099/3099358.png'">
+                </div>
+                <h2 class="text-lg font-bold text-gray-800 mb-1">${gift.name}</h2>
+                <p class="text-gray-600 text-sm mb-4">Valor estimado</p>
+                <p class="text-xl font-extrabold text-pink-600 mb-4">${gift.price}</p>
+                ${botaoAcao}
+            </div>
+        `;
+        giftsGrid.appendChild(card);
+    });
+}
