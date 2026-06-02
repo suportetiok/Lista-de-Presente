@@ -154,7 +154,7 @@ window.openNewItemModal = function() {
     editIcon.value = "";
     editImagem.value = "";
     editPixKey.value = "";
-    btnDelete.classList.add(' Editor');
+    btnDelete.classList.add('hidden');
     editModal.classList.remove('hidden');
 };
 
@@ -268,7 +268,6 @@ window.cancelarReserva = async function() {
     }
 };
 
-// 🆕 Reativar item - NÃO APAGA HISTÓRICO, só libera o item
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     if(!confirm("Deseja reativar este item? Ele ficará disponível novamente, mas o histórico permanece salvo.")) return;
@@ -292,7 +291,6 @@ window.abrirListaCompras = async function() {
     const conteudo = document.getElementById('lista-compras-conteudo');
     conteudo.innerHTML = '';
 
-    // 🆕 Mostra TODOS que já foram reservados/comprados, com nome do comprador
     const itensComprados = giftsData.filter(g => g.reservadoPor);
     
     if(itensComprados.length === 0) {
@@ -330,7 +328,6 @@ window.abrirLogs = async function() {
                 listaLogs.unshift({ id: child.key, ...child.val() });
             });
 
-            // 🆕 Log mostra QUEM fez a alteração
             listaLogs.forEach(log => {
                 const div = document.createElement('div');
                 div.className = 'p-2 border-b border-gray-100';
@@ -485,7 +482,6 @@ function mostrarBotoesAdmin(){
     btnLogs.classList.remove('hidden');
 }
 
-// 🆕 Log agora salva QUEM fez a alteração
 function registrarLog(tipo, descricao) {
     const agora = new Date();
     const data = agora.toLocaleDateString('pt-BR');
@@ -496,7 +492,7 @@ function registrarLog(tipo, descricao) {
         descricao: descricao,
         data: data,
         hora: hora,
-        usuario: usuarioAtualNome // Salva o autor
+        usuario: usuarioAtualNome
     }).catch(e => console.log("Aviso: Log não registrado - ", e.message));
 }
 
@@ -510,7 +506,6 @@ function renderGifts() {
     }
 
     giftsData.forEach(gift => {
-        // 🆕 Classe alterada: "comprado" ao invés de reservado
         const card = document.createElement('div');
         card.className = `card-item bg-white rounded-xl shadow-md p-6 border border-gray-100 flex flex-col justify-between hover:shadow-lg transition duration-200 relative ${gift.status === 'pago' ? 'comprado' : ''}`;
         
@@ -521,15 +516,14 @@ function renderGifts() {
             imgTest.src = gift.imagem;
         }
 
-        // Botão Editar (lápis)
         const adminEditButton = isAdmin ? `
             <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-20 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
         ` : '';
 
-        // 🆕 Botão Reativar aparece DIRETO NO ITEM para ADM
         const adminReativarButton = (isAdmin && gift.reservadoPor) ? `
             <button onclick="reativarItem('${gift.id}')" class="absolute bottom-2 right-2 z-20 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs" title="Reativar Item">🔄 Reativar</button>
         ` : '';
 
         const botaoAcao = gift.reservadoPor 
-            ? `<button onclick="openPix
+            ? `<button onclick="openPixModal('${gift.id}')" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">📄 Ver Detalhes</button>` 
+            : `<button onclick="abrirReserva('${gift.id}', '${gift.name.replace(/'/g, "\\'")}')" class="w-full bg-pink-500 hover:bg-pink-600
