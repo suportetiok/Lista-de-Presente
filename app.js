@@ -77,6 +77,7 @@ window.hideAdminLogin = function() {
     screenLogin.classList.remove('hidden');
 };
 
+// ✅ LOGIN CORRIGIDO - Mensagem genérica removida, tratamento correto
 window.handleAdminLogin = async function(event) {
     event.preventDefault();
     const email = document.getElementById('admin-email').value;
@@ -94,12 +95,13 @@ window.handleAdminLogin = async function(event) {
         renderGifts();
         alert("✅ Logado como Administrador!");
     } catch (erro) {
-        console.error("ERRO LOGIN EMAIL:", erro);
-        let mensagemErro = "❌ Erro ao entrar.";
-        if(erro.code === 'auth/user-not-found') mensagemErro = "❌ Usuário não cadastrado.";
-        if(erro.code === 'auth/wrong-password') mensagemErro = "❌ Senha incorreta.";
-        if(erro.code === 'auth/invalid-email') mensagemErro = "❌ E-mail inválido.";
-        alert(mensagemErro);
+        console.error("ERRO LOGIN:", erro);
+        // Mensagens específicas para ajudar o usuário
+        if(erro.code === 'auth/user-not-found' || erro.code === 'auth/wrong-password' || erro.code === 'auth/invalid-email'){
+            alert("❌ E-mail ou senha incorretos. Verifique os dados e tente novamente.");
+        } else {
+            alert("❌ Não foi possível entrar. Verifique sua conexão ou tente novamente mais tarde.");
+        }
     }
 };
 
@@ -116,8 +118,7 @@ window.loginComGoogle = async function() {
         renderGifts();
         alert("✅ Logado com Google como Administrador!");
     } catch (erro) {
-        console.error("ERRO GOOGLE:", erro);
-        alert("❌ Erro ao logar com Google: " + erro.message);
+        alert("❌ Erro ao logar com Google.");
     }
 };
 
@@ -215,6 +216,7 @@ window.abrirReserva = function(giftId, nomeItem) {
     reservaModal.classList.remove('hidden');
 };
 
+// ✅ REGRAS: Reservar NÃO gera log nem registro de compra
 window.confirmarReserva = async function(event) {
     event.preventDefault();
     const id = reservaId.value;
@@ -230,16 +232,17 @@ window.confirmarReserva = async function(event) {
             dataReserva: new Date().toLocaleString('pt-BR')
         });
 
-        registrarLog("RESERVA", `Item reservado por: ${nomePessoa} | Item: ${reservaNomeItem.textContent}`);
+        // ⛔ NÃO CHAMA registrarLog AQUI CONFORME SOLICITADO
         alert("✅ Reserva confirmada! Agora é só pagar o PIX.");
         closeModal('reserva-modal');
         openPixModal(id);
 
     } catch (erro) {
-        alert("❌ Erro ao reservar: " + erro.message);
+        alert("❌ Erro ao reservar.");
     }
 };
 
+// ✅ REGRAS: Confirmar Compra gera o registro e log
 window.confirmarCompra = async function() {
     if(!itemAtualId) return;
     const itemAtual = giftsData.find(g => g.id === itemAtualId);
@@ -253,11 +256,13 @@ window.confirmarCompra = async function() {
             status: 'pago',
             dataPagamento: new Date().toLocaleString('pt-BR')
         });
-        registrarLog("VENDA CONFIRMADA", `Item pago por: ${itemAtual.reservadoPor} | Item: ${itemAtual.name}`);
-        alert("✅ Compra confirmada com sucesso!");
+        
+        // ✅ AQUI SIM: Registra quem fez a confirmação
+        registrarLog("COMPRA CONFIRMADA", `Item: ${itemAtual.name} | Comprador: ${itemAtual.reservadoPor}`);
+        alert("✅ Compra confirmada com sucesso! Registrado no sistema.");
         closeModal('pix-modal');
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro ao confirmar.");
     }
 };
 
@@ -266,44 +271,50 @@ window.cancelarReserva = async function() {
     const itemAtual = giftsData.find(g => g.id === itemAtualId);
     if(!itemAtual) return;
 
-    if(!confirm("Cancelar reserva? O item volta a ficar disponível, mas guardaremos o histórico desta reserva.")) return;
+    if(!confirm("Cancelar reserva? O item volta a ficar disponível.")) return;
 
     try {
         const itemRef = ref(db, `gifts/${itemAtualId}`);
         await update(itemRef, {
             reservadoPor: null,
-            status: 'historico_cancelado', 
-            ultimoResponsavel: itemAtual.reservadoPor,
-            ultimaMensagem: itemAtual.mensagem,
-            ultimaData: itemAtual.dataReserva
+            mensagem: null,
+            status: null
         });
-        registrarLog("RESERVA CANCELADA", `Cancelado de: ${itemAtual.reservadoPor} | Item: ${itemAtual.name}`);
-        alert("✅ Reserva cancelada! Item liberado e histórico salvo.");
-        closeModal('pix-modal');
+        registrarLog("RESERVA CANCELADA", `Item: ${itemAtual.name}`);
+        alert("✅ Reserva cancelada!");
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro.");
     }
 };
 
+// ✅ REGRAS: Reativar NÃO apaga o histórico, apenas arquiva os dados antigos
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     const itemAtual = giftsData.find(g => g.id === giftId);
     if(!itemAtual) return;
 
-    if(!confirm("Reativar item? Ele aparecerá como NOVO, mas o histórico da compra anterior ficará salvo nos dados do sistema.")) return;
+    if(!confirm("Reativar item? O histórico da compra anterior será mantido nos registros.")) return;
 
     try {
         const itemRef = ref(db, `gifts/${giftId}`);
         await update(itemRef, {
+            // GUARDA OS DADOS ANTIGOS PARA SEMPRE
+            historico: {
+                ultimoResponsavel: itemAtual.reservadoPor,
+                ultimaMensagem: itemAtual.mensagem,
+                ultimaData: itemAtual.dataReserva || itemAtual.dataPagamento,
+                statusAnterior: itemAtual.status
+            },
+            // Libera o item novamente
             reservadoPor: null,
             mensagem: null,
             status: null,
             dataReativacao: new Date().toLocaleString('pt-BR')
         });
-        registrarLog("ITEM REATIVADO", `Item reativado pelo ADM. Histórico anterior preservado. Item: ${itemAtual.name}`);
-        alert("✅ Item reativado com sucesso! Histórico preservado.");
+        registrarLog("ITEM REATIVADO", `Item: ${itemAtual.name} | Dados anteriores salvos.`);
+        alert("✅ Item reativado! Histórico preservado.");
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro ao reativar.");
     }
 };
 
@@ -312,16 +323,16 @@ window.abrirListaCompras = async function() {
     const conteudo = document.getElementById('lista-compras-conteudo');
     conteudo.innerHTML = '';
 
-    const itensProcessados = giftsData.filter(g => g.reservadoPor || g.ultimoResponsavel);
+    const itensProcessados = giftsData.filter(g => g.reservadoPor || g.historico);
     
     if(itensProcessados.length === 0) {
         conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhuma movimentação registrada.</p>';
     } else {
         itensProcessados.forEach(item => {
-            const nomeExibido = item.reservadoPor || item.ultimoResponsavel || "Desconhecido";
-            const msgExibida = item.mensagem || item.ultimaMensagem || "---";
-            const statusExibido = item.status || "Disponível / Histórico";
-            const classeStatus = statusExibido === 'pago' ? 'text-green-600' : statusExibido === 'reservado' ? 'text-orange-500' : 'text-blue-600';
+            // Exibe dados atuais ou do histórico
+            const nomeExibido = item.reservadoPor || item.historico?.ultimoResponsavel || "---";
+            const msgExibida = item.mensagem || item.historico?.ultimaMensagem || "---";
+            const statusExibido = item.status || "Disponível / Arquivado";
 
             const div = document.createElement('div');
             div.className = 'p-3 border border-gray-200 rounded-lg bg-white shadow-sm mb-2';
@@ -329,11 +340,7 @@ window.abrirListaCompras = async function() {
                 <p class="font-bold text-pink-700">${item.name} - ${item.price}</p>
                 <p class="text-sm"><strong>👤 Responsável:</strong> ${nomeExibido}</p>
                 <p class="text-sm italic text-gray-600"><strong>💬 Recado:</strong> ${msgExibida}</p>
-                <p class="text-xs font-bold ${classeStatus}"><strong>📌 Status:</strong> ${statusExibido.toUpperCase()}</p>
-                <p class="text-xs text-gray-500"><strong>📅 Data:</strong> ${item.dataReserva || item.ultimaData || 'Não informada'}</p>
-                <button onclick="reativarItem('${item.id}')" class="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">
-                    🔄 Reativar Item
-                </button>
+                <p class="text-xs font-bold text-blue-600"><strong>📌 Status:</strong> ${statusExibido.toUpperCase()}</p>
             `;
             conteudo.appendChild(div);
         });
@@ -358,22 +365,22 @@ window.abrirLogs = async function() {
                 listaLogs.unshift({ id: child.key, ...child.val() });
             });
 
+            // ✅ REGRAS: Log mostra o nome de quem fez
             listaLogs.forEach(log => {
                 const div = document.createElement('div');
                 div.className = 'p-2 border-b border-gray-100';
                 div.innerHTML = `
                     <span class="text-gray-500 text-xs">[${log.data} ${log.hora}]</span> 
-                    <span class="font-semibold ${log.tipo.includes('VENDA') ? 'text-green-600' : log.tipo.includes('RESERVA') ? 'text-orange-500' : 'text-blue-600'}">${log.tipo}</span>
+                    <span class="font-semibold text-green-600">${log.tipo}</span>
                     <span class="text-gray-700">: ${log.descricao}</span>
-                    <span class="text-xs text-purple-600 font-medium"> | Por: ${log.usuario || 'Sistema'}</span>
+                    <span class="text-xs text-purple-600 font-medium"> | 👤 Por: ${log.usuario || 'Desconhecido'}</span>
                 `;
                 conteudo.appendChild(div);
             });
         }
         document.getElementById('logs-modal').classList.remove('hidden');
     } catch (erro) {
-        conteudo.innerHTML = `<p class="text-red-500 text-center">Erro ao carregar logs: ${erro.message}</p>`;
-        document.getElementById('logs-modal').classList.remove('hidden');
+        conteudo.innerHTML = `<p class="text-red-500 text-center">Erro ao carregar logs.</p>`;
     }
 };
 
@@ -409,12 +416,12 @@ window.saveItem = async function(event) {
         } else {
             const giftsRef = ref(db, 'gifts');
             const novoItemRef = await push(giftsRef, item);
-            registrarLog("CRIACAO", `Novo item criado: ${item.name}`);
+            registrarLog("CRIAÇÃO", `Novo item: ${item.name}`);
             alert("✅ Novo item adicionado!");
         }
         closeModal('edit-modal');
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro ao salvar.");
     }
 };
 
@@ -425,11 +432,11 @@ window.deleteItem = async function() {
             const nomeExcluido = giftsData.find(g => g.id === editId.value)?.name || editId.value;
             const itemRef = ref(db, `gifts/${editId.value}`);
             await remove(itemRef);
-            registrarLog("EXCLUSAO", `Item EXCLUÍDO do sistema: ${nomeExcluido}`);
+            registrarLog("EXCLUSÃO", `Item removido: ${nomeExcluido}`);
             alert("✅ Item excluído!");
             closeModal('edit-modal');
         } catch (erro) {
-            alert("❌ Erro: " + erro.message);
+            alert("❌ Erro ao excluir.");
         }
     }
 };
@@ -452,7 +459,7 @@ window.saveSettings = async function(event) {
         closeModal('settings-modal');
         alert("✅ Configurações salvas!");
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro ao salvar configurações.");
     }
 };
 
@@ -479,4 +486,6 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             set(configRef, {
                 loginTitle: "Lista de Presentes",
-                loginSubtitle: "Identifique-se para acessar
+                loginSubtitle: "Identifique-se para acessar a lista",
+                mainTitle: "Presentes",
+                welcomeText: "Olá, [N
