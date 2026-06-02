@@ -1,14 +1,9 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, update, push, remove, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut, 
-  onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyC7QQJ_c5wmd3GffLYDrQ3xG44LdXSApFg",
   authDomain: "lista-de-presentes-33c7f.firebaseapp.com",
@@ -19,13 +14,5 @@ const firebaseConfig = {
   appId: "1:540439045540:web:23587a2640c46784ab0d31"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
-const providerGoogle = new GoogleAuthProvider();
-
-export { 
-  db, auth, providerGoogle, 
-  ref, onValue, set, update, push, remove, get, 
-  signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged 
-};
