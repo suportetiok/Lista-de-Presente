@@ -83,24 +83,19 @@ window.handleAdminLogin = async function(event) {
     const senha = document.getElementById('admin-password').value;
 
     try {
-        // Login com e-mail e senha corrigido
-        const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+        await signInWithEmailAndPassword(auth, email, senha);
         isAdmin = true; 
-        usuarioAtualNome = userCredential.user.email || "Administrador"; // Mostra o email como identificador
+        usuarioAtualNome = "Administrador";
         
         screenAdminLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
-        renderGifts(); // Garante que o lápis aparece logo ao entrar
+        renderGifts(); // ✅ FORÇA A ATUALIZAÇÃO DOS ITENS AO LOGAR
         alert("✅ Logado como Administrador!");
     } catch (erro) {
         console.error("ERRO LOGIN EMAIL:", erro);
-        let mensagemErro = "❌ Erro ao entrar.";
-        if(erro.code === 'auth/user-not-found') mensagemErro = "❌ Usuário não cadastrado.";
-        if(erro.code === 'auth/wrong-password') mensagemErro = "❌ Senha incorreta.";
-        if(erro.code === 'auth/invalid-email') mensagemErro = "❌ E-mail inválido.";
-        alert(mensagemErro);
+        alert("❌ Erro: Verifique e-mail, senha ou regras do banco.");
     }
 };
 
@@ -108,13 +103,13 @@ window.loginComGoogle = async function() {
     try {
         const resultado = await signInWithPopup(auth, providerGoogle);
         isAdmin = true;
-        usuarioAtualNome = resultado.user.displayName || resultado.user.email || "Administrador";
+        usuarioAtualNome = resultado.user.displayName || "Administrador";
         
         screenAdminLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
-        renderGifts();
+        renderGifts(); // ✅ FORÇA A ATUALIZAÇÃO DOS ITENS AO LOGAR
         alert("✅ Logado com Google como Administrador!");
     } catch (erro) {
         console.error("ERRO GOOGLE:", erro);
@@ -212,7 +207,6 @@ window.abrirReserva = function(giftId, nomeItem) {
     reservaId.value = giftId;
     reservaNomeItem.textContent = nomeItem;
     reservaNome.value = usuarioAtualNome;
-    reservaMensagem.value = "";
     reservaModal.classList.remove('hidden');
 };
 
@@ -227,34 +221,29 @@ window.confirmarReserva = async function(event) {
         await update(itemRef, {
             reservadoPor: nomePessoa,
             mensagem: mensagemPessoa,
-            status: 'reservado',
-            dataReserva: new Date().toLocaleString('pt-BR') // Salva a data da reserva
+            status: 'reservado'
         });
 
-        registrarLog("RESERVA", `Item reservado por: ${nomePessoa} | Item: ${reservaNomeItem.textContent}`);
+        registrarLog("RESERVA", `Item reservado por ${nomePessoa}`);
         alert("✅ Reserva confirmada! Agora é só pagar o PIX.");
         closeModal('reserva-modal');
         openPixModal(id);
 
     } catch (erro) {
-        alert("❌ Erro ao reservar: " + erro.message);
+        alert("❌ Erro ao reservar: " + erro.message + " | Se persistir, contate o administrador.");
     }
 };
 
 window.confirmarCompra = async function() {
     if(!itemAtualId) return;
-    const itemAtual = giftsData.find(g => g.id === itemAtualId);
-    if(!itemAtual) return;
-
-    if(!confirm(`Tem certeza? Marcar como PAGO. Responsável: ${itemAtual.reservadoPor}`)) return;
+    if(!confirm("Tem certeza que deseja CONFIRMAR a compra? O item será marcado como pago.")) return;
 
     try {
         const itemRef = ref(db, `gifts/${itemAtualId}`);
         await update(itemRef, {
-            status: 'pago',
-            dataPagamento: new Date().toLocaleString('pt-BR')
+            status: 'pago'
         });
-        registrarLog("VENDA CONFIRMADA", `Item pago por: ${itemAtual.reservadoPor} | Item: ${itemAtual.name}`);
+        registrarLog("VENDA", `Compra confirmada para o item ID: ${itemAtualId}`);
         alert("✅ Compra confirmada com sucesso!");
         closeModal('pix-modal');
     } catch (erro) {
@@ -264,51 +253,36 @@ window.confirmarCompra = async function() {
 
 window.cancelarReserva = async function() {
     if(!itemAtualId) return;
-    const itemAtual = giftsData.find(g => g.id === itemAtualId);
-    if(!itemAtual) return;
-
-    if(!confirm("Cancelar reserva? O item volta a ficar disponível, mas guardaremos o histórico desta reserva.")) return;
+    if(!confirm("Tem certeza que deseja CANCELAR esta reserva? O item voltará a ficar disponível.")) return;
 
     try {
         const itemRef = ref(db, `gifts/${itemAtualId}`);
-        // ✅ ALTERAÇÃO PRINCIPAL: Não apaga os dados, apenas move para histórico e libera o status
         await update(itemRef, {
-            // Muda apenas o status de disponibilidade
             reservadoPor: null,
-            status: 'historico_cancelado', 
-            // GUARDA TUDO AQUI PARA SEMPRE
-            ultimoResponsavel: itemAtual.reservadoPor,
-            ultimaMensagem: itemAtual.mensagem,
-            ultimaData: itemAtual.dataReserva
+            mensagem: null,
+            status: null
         });
-        registrarLog("RESERVA CANCELADA", `Cancelado de: ${itemAtual.reservadoPor} | Item: ${itemAtual.name}`);
-        alert("✅ Reserva cancelada! Item liberado e histórico salvo.");
+        registrarLog("CANCELAMENTO", `Reserva cancelada. Item disponível novamente.`);
+        alert("✅ Reserva cancelada! Item liberado.");
         closeModal('pix-modal');
     } catch (erro) {
         alert("❌ Erro: " + erro.message);
     }
 };
 
-// ✅ ALTERAÇÃO: Reativar item mantém o registro anterior salvo
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
-    const itemAtual = giftsData.find(g => g.id === giftId);
-    if(!itemAtual) return;
-
-    if(!confirm("Reativar item? Ele aparecerá como NOVO, mas o histórico da compra anterior ficará salvo nos dados do sistema.")) return;
+    if(!confirm("Deseja reativar este item? Ele aparecerá como disponível na lista.")) return;
 
     try {
         const itemRef = ref(db, `gifts/${giftId}`);
         await update(itemRef, {
-            // Libera para novo uso
             reservadoPor: null,
             mensagem: null,
-            status: null,
-            // Os dados antigos já foram salvos nos campos 'ultimo...' e NÃO são apagados aqui
-            dataReativacao: new Date().toLocaleString('pt-BR')
+            status: null
         });
-        registrarLog("ITEM REATIVADO", `Item reativado pelo ADM. Histórico anterior preservado. Item: ${itemAtual.name}`);
-        alert("✅ Item reativado com sucesso! Histórico preservado.");
+        registrarLog("REATIVACAO", `Item reativado e disponível para reserva.`);
+        alert("✅ Item reativado com sucesso!");
     } catch (erro) {
         alert("❌ Erro: " + erro.message);
     }
@@ -319,27 +293,19 @@ window.abrirListaCompras = async function() {
     const conteudo = document.getElementById('lista-compras-conteudo');
     conteudo.innerHTML = '';
 
-    // Mostra todos os itens que já tiveram interação, não só os atuais
-    const itensProcessados = giftsData.filter(g => g.reservadoPor || g.ultimoResponsavel);
+    const itensReservados = giftsData.filter(g => g.reservadoPor);
     
-    if(itensProcessados.length === 0) {
-        conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhuma movimentação registrada.</p>';
+    if(itensReservados.length === 0) {
+        conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhum item reservado ainda.</p>';
     } else {
-        itensProcessados.forEach(item => {
-            // Define o que exibir: atual ou último histórico
-            const nomeExibido = item.reservadoPor || item.ultimoResponsavel || "Desconhecido";
-            const msgExibida = item.mensagem || item.ultimaMensagem || "---";
-            const statusExibido = item.status || "Disponível / Histórico";
-            const classeStatus = statusExibido === 'pago' ? 'text-green-600' : statusExibido === 'reservado' ? 'text-orange-500' : 'text-blue-600';
-
+        itensReservados.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'p-3 border border-gray-200 rounded-lg bg-white shadow-sm mb-2';
+            div.className = 'p-3 border border-gray-200 rounded-lg bg-white shadow-sm';
             div.innerHTML = `
                 <p class="font-bold text-pink-700">${item.name} - ${item.price}</p>
-                <p class="text-sm"><strong>👤 Responsável:</strong> ${nomeExibido}</p>
-                <p class="text-sm italic text-gray-600"><strong>💬 Recado:</strong> ${msgExibida}</p>
-                <p class="text-xs font-bold ${classeStatus}"><strong>📌 Status:</strong> ${statusExibido.toUpperCase()}</p>
-                <p class="text-xs text-gray-500"><strong>📅 Data:</strong> ${item.dataReserva || item.ultimaData || 'Não informada'}</p>
+                <p class="text-sm"><strong>Presenteado por:</strong> ${item.reservadoPor}</p>
+                <p class="text-sm italic text-gray-600">Recado: ${item.mensagem || '---'}</p>
+                <p class="text-xs font-bold ${item.status === 'pago' ? 'text-green-600' : 'text-orange-500'}">Status: ${item.status === 'pago' ? 'PAGO' : 'RESERVADO'}</p>
                 <button onclick="reativarItem('${item.id}')" class="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">
                     🔄 Reativar Item
                 </button>
@@ -372,9 +338,8 @@ window.abrirLogs = async function() {
                 div.className = 'p-2 border-b border-gray-100';
                 div.innerHTML = `
                     <span class="text-gray-500 text-xs">[${log.data} ${log.hora}]</span> 
-                    <span class="font-semibold ${log.tipo.includes('VENDA') ? 'text-green-600' : log.tipo.includes('RESERVA') ? 'text-orange-500' : 'text-blue-600'}">${log.tipo}</span>
+                    <span class="font-semibold ${log.tipo === 'EXCLUSAO' ? 'text-red-600' : log.tipo === 'CRIACAO' ? 'text-green-600' : 'text-blue-600'}">${log.tipo}</span>
                     <span class="text-gray-700">: ${log.descricao}</span>
-                    <span class="text-xs text-purple-600 font-medium"> | Por: ${log.usuario || 'Sistema'}</span>
                 `;
                 conteudo.appendChild(div);
             });
@@ -423,7 +388,7 @@ window.saveItem = async function(event) {
         }
         closeModal('edit-modal');
     } catch (erro) {
-        alert("❌ Erro: " + erro.message);
+        alert("❌ Erro de permissão ou dados inválidos: " + erro.message);
     }
 };
 
@@ -434,7 +399,7 @@ window.deleteItem = async function() {
             const nomeExcluido = giftsData.find(g => g.id === editId.value)?.name || editId.value;
             const itemRef = ref(db, `gifts/${editId.value}`);
             await remove(itemRef);
-            registrarLog("EXCLUSAO", `Item EXCLUÍDO do sistema: ${nomeExcluido}`);
+            registrarLog("EXCLUSAO", `Item excluído: ${nomeExcluido}`);
             alert("✅ Item excluído!");
             closeModal('edit-modal');
         } catch (erro) {
@@ -457,7 +422,7 @@ window.saveSettings = async function(event) {
             footerText: cfgFooterText.value
         };
         await update(configRef, dadosAtualizados);
-        registrarLog("CONFIGURAÇÕES", `Dados do site alterados`);
+        registrarLog("CONFIG", `Configurações do sistema alteradas`);
         closeModal('settings-modal');
         alert("✅ Configurações salvas!");
     } catch (erro) {
@@ -502,7 +467,7 @@ document.addEventListener("DOMContentLoaded", () => {
         snapshot.forEach((childSnapshot) => {
             giftsData.push({ id: childSnapshot.key, ...childSnapshot.val() });
         });
-        renderGifts();
+        renderGifts(); // ✅ Agora renderiza sempre que os dados mudam, independente de onde estiver
     });
 });
 
@@ -521,7 +486,6 @@ function mostrarBotoesAdmin(){
     btnLogs.classList.remove('hidden');
 }
 
-// ✅ Logs agora salvam QUEM fez a ação
 function registrarLog(tipo, descricao) {
     const agora = new Date();
     const data = agora.toLocaleDateString('pt-BR');
@@ -532,7 +496,7 @@ function registrarLog(tipo, descricao) {
         descricao: descricao,
         data: data,
         hora: hora,
-        usuario: usuarioAtualNome // <-- Salva o nome/email de quem fez
+        usuario: usuarioAtualNome
     }).catch(e => console.log("Aviso: Log não registrado - ", e.message));
 }
 
@@ -556,7 +520,7 @@ function renderGifts() {
             imgTest.src = gift.imagem;
         }
 
-        // Lápis sempre aparece para admin
+        // ✅ CORREÇÃO PRINCIPAL: O lápis aparece SEMPRE se for admin, direto no HTML
         const adminEditButton = isAdmin ? `
             <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
         ` : '';
