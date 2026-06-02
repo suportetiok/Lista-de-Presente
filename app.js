@@ -154,7 +154,7 @@ window.openNewItemModal = function() {
     editIcon.value = "";
     editImagem.value = "";
     editPixKey.value = "";
-    btnDelete.classList.add('hidden');
+    btnDelete.classList.add(' Editor');
     editModal.classList.remove('hidden');
 };
 
@@ -201,7 +201,7 @@ window.openPixModal = function(giftId) {
 window.abrirReserva = function(giftId, nomeItem) {
     const gift = giftsData.find(g => g.id === giftId);
     if(gift && gift.reservadoPor) {
-        alert("⚠️ Este presente já foi escolhido por outra pessoa!");
+        alert("⚠️ Este presente já foi comprado/reservado!");
         return;
     }
     reservaId.value = giftId;
@@ -236,12 +236,12 @@ window.confirmarReserva = async function(event) {
 
 window.confirmarCompra = async function() {
     if(!itemAtualId) return;
-    if(!confirm("Tem certeza que deseja CONFIRMAR a compra? O item será marcado como pago.")) return;
+    if(!confirm("Tem certeza que deseja CONFIRMAR a compra? O item será marcado como COMPRADO.")) return;
 
     try {
         const itemRef = ref(db, `gifts/${itemAtualId}`);
         await update(itemRef, { status: 'pago' });
-        registrarLog("VENDA", `Compra confirmada para o item ID: ${itemAtualId}`);
+        registrarLog("VENDA", `Compra confirmada. Item marcado como COMPRADO.`);
         alert("✅ Compra confirmada com sucesso!");
         closeModal('pix-modal');
     } catch (erro) {
@@ -260,7 +260,7 @@ window.cancelarReserva = async function() {
             mensagem: null,
             status: null
         });
-        registrarLog("CANCELAMENTO", `Reserva cancelada. Item disponível novamente.`);
+        registrarLog("CANCELAMENTO", `Reserva cancelada. Item liberado.`);
         alert("✅ Reserva cancelada! Item liberado.");
         closeModal('pix-modal');
     } catch (erro) {
@@ -268,9 +268,10 @@ window.cancelarReserva = async function() {
     }
 };
 
+// 🆕 Reativar item - NÃO APAGA HISTÓRICO, só libera o item
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
-    if(!confirm("Deseja reativar este item? Ele aparecerá como disponível na lista.")) return;
+    if(!confirm("Deseja reativar este item? Ele ficará disponível novamente, mas o histórico permanece salvo.")) return;
 
     try {
         const itemRef = ref(db, `gifts/${giftId}`);
@@ -279,7 +280,7 @@ window.reativarItem = async function(giftId) {
             mensagem: null,
             status: null
         });
-        registrarLog("REATIVACAO", `Item reativado e disponível para reserva.`);
+        registrarLog("REATIVACAO", `Item reativado e disponível novamente.`);
         alert("✅ Item reativado com sucesso!");
     } catch (erro) {
         alert("❌ Erro: " + erro.message);
@@ -291,22 +292,20 @@ window.abrirListaCompras = async function() {
     const conteudo = document.getElementById('lista-compras-conteudo');
     conteudo.innerHTML = '';
 
-    const itensReservados = giftsData.filter(g => g.reservadoPor);
+    // 🆕 Mostra TODOS que já foram reservados/comprados, com nome do comprador
+    const itensComprados = giftsData.filter(g => g.reservadoPor);
     
-    if(itensReservados.length === 0) {
-        conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhum item reservado ainda.</p>';
+    if(itensComprados.length === 0) {
+        conteudo.innerHTML = '<p class="text-gray-500 text-center">Nenhum item comprado/reservado ainda.</p>';
     } else {
-        itensReservados.forEach(item => {
+        itensComprados.forEach(item => {
             const div = document.createElement('div');
             div.className = 'p-3 border border-gray-200 rounded-lg bg-white shadow-sm';
             div.innerHTML = `
                 <p class="font-bold text-pink-700">${item.name} - ${item.price}</p>
-                <p class="text-sm"><strong>Presenteado por:</strong> ${item.reservadoPor}</p>
+                <p class="text-sm"><strong>Comprado por:</strong> ${item.reservadoPor}</p>
                 <p class="text-sm italic text-gray-600">Recado: ${item.mensagem || '---'}</p>
-                <p class="text-xs font-bold ${item.status === 'pago' ? 'text-green-600' : 'text-orange-500'}">Status: ${item.status === 'pago' ? 'PAGO' : 'RESERVADO'}</p>
-                <button onclick="reativarItem('${item.id}')" class="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">
-                    🔄 Reativar Item
-                </button>
+                <p class="text-xs font-bold ${item.status === 'pago' ? 'text-green-600' : 'text-orange-500'}">Status: ${item.status === 'pago' ? 'COMPRADO' : 'RESERVADO'}</p>
             `;
             conteudo.appendChild(div);
         });
@@ -331,6 +330,7 @@ window.abrirLogs = async function() {
                 listaLogs.unshift({ id: child.key, ...child.val() });
             });
 
+            // 🆕 Log mostra QUEM fez a alteração
             listaLogs.forEach(log => {
                 const div = document.createElement('div');
                 div.className = 'p-2 border-b border-gray-100';
@@ -338,6 +338,7 @@ window.abrirLogs = async function() {
                     <span class="text-gray-500 text-xs">[${log.data} ${log.hora}]</span> 
                     <span class="font-semibold ${log.tipo === 'EXCLUSAO' ? 'text-red-600' : log.tipo === 'CRIACAO' ? 'text-green-600' : 'text-blue-600'}">${log.tipo}</span>
                     <span class="text-gray-700">: ${log.descricao}</span>
+                    <span class="text-xs text-gray-500 ml-2">• Por: ${log.usuario || 'Desconhecido'}</span>
                 `;
                 conteudo.appendChild(div);
             });
@@ -484,6 +485,7 @@ function mostrarBotoesAdmin(){
     btnLogs.classList.remove('hidden');
 }
 
+// 🆕 Log agora salva QUEM fez a alteração
 function registrarLog(tipo, descricao) {
     const agora = new Date();
     const data = agora.toLocaleDateString('pt-BR');
@@ -494,7 +496,7 @@ function registrarLog(tipo, descricao) {
         descricao: descricao,
         data: data,
         hora: hora,
-        usuario: usuarioAtualNome
+        usuario: usuarioAtualNome // Salva o autor
     }).catch(e => console.log("Aviso: Log não registrado - ", e.message));
 }
 
@@ -508,5 +510,26 @@ function renderGifts() {
     }
 
     giftsData.forEach(gift => {
+        // 🆕 Classe alterada: "comprado" ao invés de reservado
         const card = document.createElement('div');
-        card.className = `card-item bg-white rounded-xl shadow-md p-6 border
+        card.className = `card-item bg-white rounded-xl shadow-md p-6 border border-gray-100 flex flex-col justify-between hover:shadow-lg transition duration-200 relative ${gift.status === 'pago' ? 'comprado' : ''}`;
+        
+        if(gift.imagem && gift.imagem !== "") {
+            const imgTest = new Image();
+            imgTest.onload = () => card.style.backgroundImage = `url("${gift.imagem}")`;
+            imgTest.onerror = () => card.style.backgroundImage = "";
+            imgTest.src = gift.imagem;
+        }
+
+        // Botão Editar (lápis)
+        const adminEditButton = isAdmin ? `
+            <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-20 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
+        ` : '';
+
+        // 🆕 Botão Reativar aparece DIRETO NO ITEM para ADM
+        const adminReativarButton = (isAdmin && gift.reservadoPor) ? `
+            <button onclick="reativarItem('${gift.id}')" class="absolute bottom-2 right-2 z-20 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs" title="Reativar Item">🔄 Reativar</button>
+        ` : '';
+
+        const botaoAcao = gift.reservadoPor 
+            ? `<button onclick="openPix
