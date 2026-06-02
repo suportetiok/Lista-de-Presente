@@ -9,6 +9,7 @@ import {
   onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
+// ✅ SUAS CONFIGURAÇÕES DO FIREBASE JÁ INSERIDAS AQUI
 const firebaseConfig = {
   apiKey: "AIzaSyC7QQJ_c5wmd3GffLYDrQ3xG44LdXSApFg",
   authDomain: "lista-de-presentes-33c7f.firebaseapp.com",
