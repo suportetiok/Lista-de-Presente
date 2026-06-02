@@ -80,7 +80,6 @@ window.hideAdminLogin = function() {
     screenLogin.classList.remove('hidden');
 };
 
-// ✅ LOGIN ADMIN CORRIGIDO (mensagem de erro exata que pediu)
 window.handleAdminLogin = async function(event) {
     event.preventDefault();
     const email = document.getElementById('admin-email').value;
@@ -120,7 +119,6 @@ window.loginComGoogle = async function() {
     }
 };
 
-// ✅ LOGIN USUÁRIO COMUM
 window.handleLogin = function(event) {
     event.preventDefault();
     const username = document.getElementById('username').value.trim();
@@ -131,7 +129,6 @@ window.handleLogin = function(event) {
         atualizarSaudacao();
         screenLogin.classList.add('hidden');
         screenDashboard.classList.remove('hidden');
-        // Esconde botões de admin
         btnNewItem.classList.add('hidden');
         btnSettings.classList.add('hidden');
         btnListaCompras.classList.add('hidden');
@@ -217,7 +214,6 @@ window.abrirReserva = function(giftId, nomeItem) {
     reservaModal.classList.remove('hidden');
 };
 
-// ✅ REGRA: Reservar NÃO cria registro/log
 window.confirmarReserva = async function(event) {
     event.preventDefault();
     const id = reservaId.value;
@@ -242,7 +238,6 @@ window.confirmarReserva = async function(event) {
     }
 };
 
-// ✅ REGRA: Confirmar Compra SIM cria registro/log com nome do usuário
 window.confirmarCompra = async function() {
     if(!itemAtualId) return;
     const itemAtual = giftsData.find(g => g.id === itemAtualId);
@@ -257,7 +252,6 @@ window.confirmarCompra = async function() {
             dataPagamento: new Date().toLocaleString('pt-BR')
         });
         
-        // ✅ Log mostra QUEM fez
         registrarLog("COMPRA CONFIRMADA", `Item: ${itemAtual.name} | Comprador: ${itemAtual.reservadoPor}`);
         alert("✅ Compra registrada no sistema!");
         closeModal('pix-modal');
@@ -287,7 +281,6 @@ window.cancelarReserva = async function() {
     }
 };
 
-// ✅ REGRA: Reativar está NO PRÓPRIO ITEM e NÃO apaga histórico
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     const itemAtual = giftsData.find(g => g.id === giftId);
@@ -298,14 +291,12 @@ window.reativarItem = async function(giftId) {
     try {
         const itemRef = ref(db, `gifts/${giftId}`);
         await update(itemRef, {
-            // Salva tudo o que aconteceu antes para NÃO PERDER
             historicoCompleto: {
                 responsavelAnterior: itemAtual.reservadoPor,
                 mensagemAnterior: itemAtual.mensagem,
                 statusAnterior: itemAtual.status,
                 dataAcao: new Date().toLocaleString('pt-BR')
             },
-            // Libera o item novamente
             reservadoPor: null,
             mensagem: null,
             status: null
@@ -335,6 +326,7 @@ window.abrirListaCompras = async function() {
                 <p class="text-sm">👤 Por: ${item.reservadoPor || item.historicoCompleto?.responsavelAnterior || '---'}</p>
                 <p class="text-sm italic">💬 Recado: ${item.mensagem || item.historicoCompleto?.mensagemAnterior || '---'}</p>
                 <p class="text-xs text-blue-600">📌 Status: ${item.status || 'Disponível'}</p>
+                <button onclick="reativarItem('${item.id}')" class="mt-2 text-xs bg-blue-500 text-white px-2 py-1 rounded">🔄 Reativar Item</button>
             `;
             conteudo.appendChild(div);
         });
@@ -448,7 +440,7 @@ window.saveSettings = async function(event) {
 
 
 // ==============================================
-// FUNÇÕES DE APOIO
+// FUNÇÕES DE APOIO E INICIALIZAÇÃO
 // ==============================================
 
 function mostrarBotoesAdmin() {
@@ -466,7 +458,6 @@ function atualizarSaudacao() {
     }
 }
 
-// ✅ REGRA: Log sempre salva o nome de quem fez
 function registrarLog(tipo, descricao) {
     const agora = new Date();
     push(ref(db, 'logs'), {
@@ -490,7 +481,6 @@ function renderGifts() {
         const card = document.createElement('div');
         card.className = `card-item rounded-xl shadow-lg overflow-hidden transform transition hover:scale-[1.02] ${gift.reservadoPor ? 'reservado' : ''}`;
         
-        // Imagem de fundo do card
         if(gift.imagem) {
             card.style.backgroundImage = `url('${gift.imagem}')`;
         }
@@ -517,3 +507,19 @@ function renderGifts() {
 
                     ${isAdmin ? `
                         <button onclick="reativarItem('${gift.id}')" class="w-full py-1.5 rounded-lg text-xs font-semibold bg-green-500 hover:bg-green-600 text-white">
+                            🔄 Reativar
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        giftsGrid.appendChild(card);
+    });
+}
+
+// ==============================================
+// CARREGAR DADOS DO BANCO (AQUI ESTAVA O ERRO ANTES)
+// ==============================================
+
+// 1. Carregar Configurações (Título, imagem de fundo, textos)
+onValue(ref(db, 'configuraco
