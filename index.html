@@ -200,7 +200,7 @@
     <!-- Modal PIX -->
     <div id="pix-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center relative border border-gray-100">
-            <button type="button" onclick="closeModal('pix-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            <button onclick="closeModal('pix-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
             
             <h3 class="text-xl font-bold text-gray-800 mb-1" id="modal-gift-name">Nome do Presente</h3>
             <p class="text-pink-600 font-bold text-lg mb-4" id="modal-gift-value">R$ 0,00</p>
@@ -209,26 +209,15 @@
                 <img id="modal-qr-code" src="" alt="QR Code PIX" class="w-40 h-40 mx-auto">
             </div>
             
-            <p class="text-xs text-gray-500 mb-2 px-4">Presenteado por: <strong id="modal-reservado-por"></strong></p>
+            <p class="text-xs text-gray-500 mb-4 px-4">Presenteado por: <strong id="modal-reservado-por"></strong></p>
             <p class="text-xs italic text-gray-500 mb-4 px-4" id="modal-mensagem-recado"></p>
             
             <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 flex items-center justify-between text-left mb-4">
                 <span class="text-xs text-gray-600 truncate mr-2" id="pix-copia-cola">chave-pix-ficticia-copia-e-cola...</span>
-                <button type="button" onclick="copyPixKey()" class="bg-pink-500 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-pink-600 transition shrink-0">Copiar</button>
+                <button onclick="copyPixKey()" class="bg-pink-500 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-pink-600 transition shrink-0">Copiar</button>
             </div>
             
-            <!-- ÁREA DOS BOTÕES NOVOS -->
-            <div id="botoes-acao-pix" class="flex flex-col gap-2 mt-2 mb-2">
-                <button type="button" onclick="confirmarCompra()" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
-                    ✅ Confirmar Compra
-                </button>
-                <button type="button" onclick="cancelarReserva()" class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
-                    ❌ Cancelar Reserva
-                </button>
-            </div>
-            <!-- FIM DA ÁREA NOVA -->
-
-            <button type="button" onclick="closeModal('pix-modal')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-lg transition mt-2">
+            <button onclick="closeModal('pix-modal')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-lg transition">
                 Fechar
             </button>
         </div>
