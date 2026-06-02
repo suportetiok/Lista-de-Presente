@@ -5,7 +5,7 @@ let isAdmin = false;
 let giftsData = [];
 let siteConfig = {};
 let usuarioAtualNome = "";
-let itemAtualId = "";
+let itemAtualId = ""; // 🆕 Variável para guardar o ID do item aberto no modal
 
 // Elementos da página
 const screenLogin = document.getElementById('screen-login');
@@ -37,7 +37,7 @@ const modalQrCode = document.getElementById('modal-qr-code');
 const pixCopiaCola = document.getElementById('pix-copia-cola');
 const modalReservadoPor = document.getElementById('modal-reservado-por');
 const modalMensagemRecado = document.getElementById('modal-mensagem-recado');
-const botoesAcaoPix = document.getElementById('botoes-acao-pix');
+const botoesAcaoPix = document.getElementById('botoes-acao-pix'); // 🆕
 
 const reservaModal = document.getElementById('reserva-modal');
 const reservaId = document.getElementById('reserva-id');
@@ -91,7 +91,6 @@ window.handleAdminLogin = async function(event) {
         screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
-        renderGifts(); // ✅ FORÇA A ATUALIZAÇÃO DOS ITENS AO LOGAR
         alert("✅ Logado como Administrador!");
     } catch (erro) {
         console.error("ERRO LOGIN EMAIL:", erro);
@@ -109,7 +108,6 @@ window.loginComGoogle = async function() {
         screenDashboard.classList.remove('hidden');
         mostrarBotoesAdmin();
         atualizarSaudacao();
-        renderGifts(); // ✅ FORÇA A ATUALIZAÇÃO DOS ITENS AO LOGAR
         alert("✅ Logado com Google como Administrador!");
     } catch (erro) {
         console.error("ERRO GOOGLE:", erro);
@@ -178,16 +176,16 @@ window.openPixModal = function(giftId) {
     const gift = giftsData.find(g => g.id === giftId);
     if (!gift) return;
 
-    itemAtualId = giftId;
+    itemAtualId = giftId; // Guarda o ID do item atual para usar nos botões
 
     if(gift.reservadoPor) {
         modalReservadoPor.textContent = gift.reservadoPor;
         modalMensagemRecado.textContent = gift.mensagem || "Sem mensagem.";
-        botoesAcaoPix.classList.remove('hidden');
+        botoesAcaoPix.classList.remove('hidden'); // Mostra os botões de ação
     } else {
         modalReservadoPor.textContent = "Ainda não reservado";
         modalMensagemRecado.textContent = "";
-        botoesAcaoPix.classList.add('hidden');
+        botoesAcaoPix.classList.add('hidden'); // Esconde se não estiver reservado
     }
 
     modalGiftName.textContent = gift.name;
@@ -221,7 +219,7 @@ window.confirmarReserva = async function(event) {
         await update(itemRef, {
             reservadoPor: nomePessoa,
             mensagem: mensagemPessoa,
-            status: 'reservado'
+            status: 'reservado' // 🆕 Adiciona status
         });
 
         registrarLog("RESERVA", `Item reservado por ${nomePessoa}`);
@@ -234,6 +232,7 @@ window.confirmarReserva = async function(event) {
     }
 };
 
+// 🆕 FUNÇÃO: Confirmar Compra
 window.confirmarCompra = async function() {
     if(!itemAtualId) return;
     if(!confirm("Tem certeza que deseja CONFIRMAR a compra? O item será marcado como pago.")) return;
@@ -251,6 +250,7 @@ window.confirmarCompra = async function() {
     }
 };
 
+// 🆕 FUNÇÃO: Cancelar Reserva
 window.cancelarReserva = async function() {
     if(!itemAtualId) return;
     if(!confirm("Tem certeza que deseja CANCELAR esta reserva? O item voltará a ficar disponível.")) return;
@@ -270,6 +270,7 @@ window.cancelarReserva = async function() {
     }
 };
 
+// 🆕 FUNÇÃO: Reativar Item (Disponível novamente) - Botão ADM
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     if(!confirm("Deseja reativar este item? Ele aparecerá como disponível na lista.")) return;
@@ -467,7 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
         snapshot.forEach((childSnapshot) => {
             giftsData.push({ id: childSnapshot.key, ...childSnapshot.val() });
         });
-        renderGifts(); // ✅ Agora renderiza sempre que os dados mudam, independente de onde estiver
+        renderGifts();
     });
 });
 
@@ -520,7 +521,6 @@ function renderGifts() {
             imgTest.src = gift.imagem;
         }
 
-        // ✅ CORREÇÃO PRINCIPAL: O lápis aparece SEMPRE se for admin, direto no HTML
         const adminEditButton = isAdmin ? `
             <button onclick="openEditModal('${gift.id}')" class="absolute top-2 right-2 z-10 text-gray-700 hover:text-pink-600 bg-white/80 p-1.5 rounded-full text-lg transition-transform hover:scale-110" title="Editar Item">✏️</button>
         ` : '';
