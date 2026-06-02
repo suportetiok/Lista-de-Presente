@@ -80,7 +80,7 @@ window.hideAdminLogin = function() {
     screenLogin.classList.remove('hidden');
 };
 
-// ✅ LOGIN ADMIN CORRIGIDO
+// ✅ LOGIN ADMIN CORRIGIDO (mensagem de erro exata que pediu)
 window.handleAdminLogin = async function(event) {
     event.preventDefault();
     const email = document.getElementById('admin-email').value;
@@ -99,7 +99,7 @@ window.handleAdminLogin = async function(event) {
         alert("✅ Logado como Administrador!");
     } catch (erro) {
         console.error("ERRO LOGIN:", erro);
-        alert("❌ Verifique e-mail, senha ou regras do banco.");
+        alert("❌ Erro: Verifique e-mail, senha ou regras do banco.");
     }
 };
 
@@ -287,7 +287,7 @@ window.cancelarReserva = async function() {
     }
 };
 
-// ✅ REGRA: Reativar NÃO apaga histórico, apenas arquiva
+// ✅ REGRA: Reativar está NO PRÓPRIO ITEM e NÃO apaga histórico
 window.reativarItem = async function(giftId) {
     if(!isAdmin) { alert("❌ Acesso restrito!"); return; }
     const itemAtual = giftsData.find(g => g.id === giftId);
@@ -298,14 +298,14 @@ window.reativarItem = async function(giftId) {
     try {
         const itemRef = ref(db, `gifts/${giftId}`);
         await update(itemRef, {
-            // Salva tudo o que aconteceu antes
+            // Salva tudo o que aconteceu antes para NÃO PERDER
             historicoCompleto: {
                 responsavelAnterior: itemAtual.reservadoPor,
                 mensagemAnterior: itemAtual.mensagem,
                 statusAnterior: itemAtual.status,
                 dataAcao: new Date().toLocaleString('pt-BR')
             },
-            // Libera o item
+            // Libera o item novamente
             reservadoPor: null,
             mensagem: null,
             status: null
@@ -335,7 +335,6 @@ window.abrirListaCompras = async function() {
                 <p class="text-sm">👤 Por: ${item.reservadoPor || item.historicoCompleto?.responsavelAnterior || '---'}</p>
                 <p class="text-sm italic">💬 Recado: ${item.mensagem || item.historicoCompleto?.mensagemAnterior || '---'}</p>
                 <p class="text-xs text-blue-600">📌 Status: ${item.status || 'Disponível'}</p>
-                <button onclick="reativarItem('${item.id}')" class="mt-2 text-xs bg-blue-500 text-white px-2 py-1 rounded">🔄 Reativar Item</button>
             `;
             conteudo.appendChild(div);
         });
@@ -467,12 +466,13 @@ function atualizarSaudacao() {
     }
 }
 
+// ✅ REGRA: Log sempre salva o nome de quem fez
 function registrarLog(tipo, descricao) {
     const agora = new Date();
     push(ref(db, 'logs'), {
         tipo: tipo,
         descricao: descricao,
-        usuario: usuarioAtualNome, // ✅ Sempre salva quem fez
+        usuario: usuarioAtualNome,
         data: agora.toLocaleDateString('pt-BR'),
         hora: agora.toLocaleTimeString('pt-BR')
     });
@@ -515,5 +515,5 @@ function renderGifts() {
                         ${gift.reservadoPor ? 'Ver Detalhes' : 'Escolher Presente'}
                     </button>
 
-                    ${isAdmin && gift.reservadoPor ? `
-                        <button onclick="reativarItem('${gift.id}')" class="w-full py-1.5 rounded-lg text-xs font-semibold bg-green-500 hover:bg-green
+                    ${isAdmin ? `
+                        <button onclick="reativarItem('${gift.id}')" class="w-full py-1.5 rounded-lg text-xs font-semibold bg-green-500 hover:bg-green-600 text-white">
